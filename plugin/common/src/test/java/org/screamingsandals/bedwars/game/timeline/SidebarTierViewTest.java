@@ -107,4 +107,27 @@ class SidebarTierViewTest {
         assertEquals(SidebarTierView.Kind.NEXT_EVENT, view.kind());
         assertEquals(100, view.seconds());
     }
+
+    @Test
+    void showsGameOverOnceTheTimelineGameEndFiredEvenIfTheStatusStillReadsRunning() {
+        // the game-end event is consumed first, the status changes a moment later: no "Game End in <arena time limit>" in between
+        var view = SidebarTierView.resolve(advanced(160, event("game-end", 160, true)), true, 3440);
+        assertEquals(SidebarTierView.Kind.GAME_OVER, view.kind());
+    }
+
+    @Test
+    void stillShowsTheCountdownToTheTimelineGameEndBeforeItFires() {
+        var view = SidebarTierView.resolve(advanced(159, event("game-end", 160, true)), true, 3441);
+        assertEquals(SidebarTierView.Kind.NEXT_EVENT, view.kind());
+        assertEquals(1, view.seconds());
+    }
+
+    @Test
+    void theTimeLimitStaysVisibleAfterTheLastEventWhenNoneEndsTheGame() {
+        var tier = new TimelineEventDefinition("diamond-2", TimelineEventType.SPAWNER_TIER, 10, "diamond", 2, null, false,
+                null, true, null, null, null, null, null);
+        var view = SidebarTierView.resolve(advanced(20, tier), true, 3000);
+        assertEquals(SidebarTierView.Kind.TIME_LIMIT, view.kind());
+        assertEquals(3000, view.seconds());
+    }
 }

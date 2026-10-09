@@ -144,4 +144,19 @@ class TimelineStateTest {
         list.clear();
         assertEquals(1, state.getEvents().size());
     }
+
+    @Test
+    void gameEndCountsAsFiredFromTheAdvanceThatConsumesIt() {
+        var gameEnd = new TimelineEventDefinition("game-end", TimelineEventType.GAME_END, 3, null, 0, null, false,
+                null, true, null, null, null, null, null);
+        var state = new TimelineState(List.of(event("a", 1), gameEnd));
+        assertFalse(state.hasFiredGameEnd());
+        state.advance();
+        state.advance();
+        assertFalse(state.hasFiredGameEnd());
+        state.advance();
+        assertTrue(state.hasFiredGameEnd());
+        assertFalse(new TimelineState(List.of(event("a", 1))).hasFiredGameEnd());
+        assertFalse(new TimelineState(List.of()).hasFiredGameEnd());
+    }
 }

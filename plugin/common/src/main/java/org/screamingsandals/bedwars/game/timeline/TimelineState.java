@@ -76,6 +76,20 @@ public final class TimelineState {
     }
 
     /**
+     * @return whether a GAME_END event was already taken off the schedule (it ends the game right after, the game status
+     * may still read RUNNING for a moment); safe from any thread
+     */
+    public boolean hasFiredGameEnd() {
+        int fired = nextIndex;
+        for (int i = 0; i < fired && i < events.size(); i++) {
+            if (events.get(i).type() == TimelineEventType.GAME_END) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
      * @return the first not-yet-fired event that is shown on the sidebar, or null (safe from any thread)
      */
     public @Nullable TimelineEventDefinition peekNextVisible() {
