@@ -223,6 +223,7 @@
     "modes": {
       "unknown_mode": "<red>Unknown mode <gray><mode></gray>.",
       "no_arena_available": "<red>All arenas for <mode> <red>are busy right now. Please try again in a moment.",
+      "no_arena_configured": "<red>No arena is set up for <mode> <red>yet.",
       "party_too_large": "<red>Your party has <yellow><size></yellow> online members, but <mode> <red>allows only <yellow><team-size></yellow> players per team.",
       "party_leader_only": "<red>Only your party leader can choose a mode.",
       "joining": "<green>Joining <mode> <green>on <yellow><arena></yellow>...",

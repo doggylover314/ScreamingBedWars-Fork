@@ -185,6 +185,7 @@ public final class ForkLangKeys {
     // ---------------- modes ----------------
     public static final String[] MODES_UNKNOWN_MODE = {ROOT, "modes", "unknown_mode"};
     public static final String[] MODES_NO_ARENA_AVAILABLE = {ROOT, "modes", "no_arena_available"};
+    public static final String[] MODES_NO_ARENA_CONFIGURED = {ROOT, "modes", "no_arena_configured"};
     public static final String[] MODES_PARTY_TOO_LARGE = {ROOT, "modes", "party_too_large"};
     public static final String[] MODES_PARTY_LEADER_ONLY = {ROOT, "modes", "party_leader_only"};
     public static final String[] MODES_JOINING = {ROOT, "modes", "joining"};

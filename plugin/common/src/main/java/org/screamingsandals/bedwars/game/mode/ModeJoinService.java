@@ -98,6 +98,11 @@ public class ModeJoinService {
             queue.remove(player.getUuid());
             return;
         }
+        if (!ModeArenaSelector.hasConfiguredArena(modeManager.snapshotArenas(), mode.get())) {
+            player.sendMessage(Message.of(ForkLangKeys.MODES_NO_ARENA_CONFIGURED).defaultPrefix()
+                    .placeholder("mode", ModeManager.displayNameComponent(mode.get())));
+            return; // nothing will ever free up, so do not queue either
+        }
         if (!modeManager.isQueueEnabled()) {
             player.sendMessage(Message.of(ForkLangKeys.MODES_NO_ARENA_AVAILABLE).defaultPrefix()
                     .placeholder("mode", ModeManager.displayNameComponent(mode.get())));
