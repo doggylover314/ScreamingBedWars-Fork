@@ -32,8 +32,8 @@ config:
   use-team-letter-prefixes-before-player-names: true
   use-certain-popular-server-titles: true
   show-game-info-on-start: true
-  modes:
-    only-via-mode-selection: false   # fork: true = players join these arenas ONLY through mode NPCs / /bw mode join (admins bypass; ignored in bungee mode)
+  # modes.only-via-mode-selection is not pinned here, config.yml decides (default false). true = players join these arenas
+  # ONLY through mode NPCs / /bw mode join (admins bypass; ignored in bungee mode). Per arena: /bw admin <arena> config set boolean modes.only-via-mode-selection true
   bossbar:
     game:
       enabled: false
@@ -96,29 +96,18 @@ config:
     enabled: true
     blacklist:
       - glass
-  # Bed destruction / sudden death / time limit. Approximate Hypixel behaviour, every value can be changed.
-  bed-destruction:
-    announce: true
+  # Bed destruction, sudden death and time limit follow config.yml (defaults: bed-destruction.announce true,
+  # sudden-death.dragon.block-destruction placed = only player-placed blocks are broken, game-end-by-time.mode draw).
+  # Only values that differ from config.yml are pinned in this block, and a value set here beats config.yml.
   sudden-death:
-    enabled: true
-    destroy-targets: true
-    bossbar-message: true
     dragon:
-      per-team: 1                 # Dragon Buff adds one more (upgrade-shop)
-      speed: 0.8                  # approximate
-      turn-rate: 6.0
-      invulnerable: true
-      damage-own-team: false
-      block-destruction: placed   # only blocks placed by players are destroyed; 'all' would also break map blocks (they are restored when the arena rebuilds)
-  game-end-by-time:
-    mode: draw                    # Hypixel-like: nobody wins when the time runs out
+      speed: 0.8                  # approximate, config.yml default is 0.7
   setup:
+    # Hypixel base generators (iron + gold). Pinned on purpose, so this variant keeps them when the global default changes.
     team-generator-types:
       - iron
       - gold
     team-generator-hologram: false        # Hypixel base generators have no hologram
-    diamond-spawner-type: diamond
-    emerald-spawner-type: emerald
     upgrade-shop-file: certain-popular-server/upgrade-shop.yml
 
 
