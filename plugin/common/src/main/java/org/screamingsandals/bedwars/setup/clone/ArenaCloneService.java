@@ -49,13 +49,13 @@ import org.spongepowered.configurate.serialize.SerializationException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.OptionalInt;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Clones arenas: validates the request (pure {@link ClonePlanner}), shows a preview, asks for confirmation and runs
@@ -70,8 +70,8 @@ public class ArenaCloneService {
     private static final int MAX_ERROR_LINES = 5;
 
     private final Map<UUID, PendingClone> pending = new HashMap<>();
-    private final Set<UUID> lockedArenas = new HashSet<>();
-    private @Nullable ArenaCloneJob job; // one job at a time
+    private final Set<UUID> lockedArenas = ConcurrentHashMap.newKeySet(); // read by other packages (D51 snapshot, P8 AddCommand)
+    private volatile @Nullable ArenaCloneJob job; // one job at a time
 
     record PendingClone(UUID sourceUuid, String sourceName, String newName, int x, int y, int z, String world, long createdAt) {
     }
@@ -107,6 +107,7 @@ public class ArenaCloneService {
     public void request(@NotNull Player p, @NotNull GameImpl source, @NotNull String newName, @NotNull String xs,
                         @NotNull String ys, @NotNull String zs, @Nullable String worldName, @NotNull String confirmCommand) {
         var settings = CloneSettings.load();
+        pending.remove(p.getUniqueId()); // a new request replaces the old pending one, even when it is refused
 
         World targetWorld = worldName == null ? p.getLocation().getWorld() : Worlds.getWorld(worldName);
         if (targetWorld == null) {
@@ -324,7 +325,7 @@ public class ArenaCloneService {
                     p.sendMessage(Message.of(ForkLangKeys.CLONE_PREVIEW_LOBBY_REGION_COPIED));
                     break;
                 case LOBBY_SHARED:
-                    p.sendMessage(Message.of(ForkLangKeys.CLONE_PREVIEW_LOBBY_SHARED));
+                    p.sendMessage(Message.of(ForkLangKeys.CLONE_PREVIEW_LOBBY_SHARED).placeholderRaw("target", newName));
                     break;
                 case LOBBY_REGION_DROPPED:
                     p.sendMessage(Message.of(ForkLangKeys.CLONE_PREVIEW_LOBBY_REGION_DROPPED));

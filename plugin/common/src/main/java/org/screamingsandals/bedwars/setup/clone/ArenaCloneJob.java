@@ -576,7 +576,7 @@ final class ArenaCloneJob {
             BedWarsPlugin.getInstance().getLogger().info("Clone {} -> {}: {} of {} blocks differed and were written",
                     sourceName, targetName, changed, plan.totalBlocks());
             if (GameManagerImpl.getInstance().hasGame(targetName) || (AdminCommand.gc != null && AdminCommand.gc.containsKey(targetName))) {
-                send(failed("name taken meanwhile"));
+                sendAndLog(failed("name taken meanwhile"));
                 service.onJobEnded(this);
                 return;
             }
@@ -585,7 +585,7 @@ final class ArenaCloneJob {
                 file = LocalGameLoaderImpl.getInstance().writeNewArenaFile(targetUuid, node);
             } catch (ConfigurateException e) {
                 BedWarsPlugin.getInstance().getLogger().error("Arena clone: cannot write the arena file", e);
-                send(failed(String.valueOf(e.getMessage())));
+                sendAndLog(failed(String.valueOf(e.getMessage())));
                 service.onJobEnded(this);
                 return;
             }
@@ -598,12 +598,12 @@ final class ArenaCloneJob {
                         var disabled = new File(file.getPath() + ".disabled"); // GameManagerImpl skips *.disabled
                         //noinspection ResultOfMethodCallIgnored
                         file.renameTo(disabled);
-                        send(Message.of(ForkLangKeys.CLONE_FAILED_LOAD)
+                        sendAndLog(Message.of(ForkLangKeys.CLONE_FAILED_LOAD)
                                 .placeholderRaw("target", targetName)
                                 .placeholderRaw("file", disabled.getName()));
                     } else {
                         GameManagerImpl.getInstance().addGame(game); // loadGame already called start()
-                        send(Message.of(ForkLangKeys.CLONE_FINISHED)
+                        sendAndLog(Message.of(ForkLangKeys.CLONE_FINISHED)
                                 .placeholderRaw("target", targetName)
                                 .placeholder("blocks", plan.totalBlocks())
                                 .placeholder("block_entities", platformCopied + containers + signs)
@@ -621,7 +621,7 @@ final class ArenaCloneJob {
             // stop() already ran: make sure the job is released and the initiator hears about it
             BedWarsPlugin.getInstance().getLogger().error("Arena clone failed while finishing", t);
             try {
-                send(failed(String.valueOf(t)));
+                sendAndLog(failed(String.valueOf(t)));
             } finally {
                 service.onJobEnded(this);
             }
@@ -639,8 +639,11 @@ final class ArenaCloneJob {
         if (!stop()) {
             return;
         }
-        send(failed(reason));
-        service.onJobEnded(this);
+        try {
+            sendAndLog(failed(reason));
+        } finally {
+            service.onJobEnded(this);
+        }
     }
 
     /**
@@ -653,20 +656,23 @@ final class ArenaCloneJob {
         if (!stop()) {
             return;
         }
-        var message = Message.of(ForkLangKeys.CLONE_CANCELLED)
-                .placeholderRaw("source", sourceName)
-                .placeholder("percent", p);
-        send(message);
-        // the initiator got the message (or the console did when they are offline): tell the requester too if it is somebody else
-        boolean requesterIsInitiator = requester instanceof Player && ((Player) requester).getUniqueId().equals(initiator);
-        boolean requesterIsConsoleThatAlreadyHeard = !(requester instanceof Player) && Players.getPlayer(initiator) == null;
-        if (requester != null && !requesterIsInitiator && !requesterIsConsoleThatAlreadyHeard) {
-            requester.sendMessage(Message.of(ForkLangKeys.CLONE_CANCELLED)
-                    .defaultPrefix()
+        try {
+            var message = Message.of(ForkLangKeys.CLONE_CANCELLED)
                     .placeholderRaw("source", sourceName)
-                    .placeholder("percent", p));
+                    .placeholder("percent", p);
+            send(message);
+            // the initiator got the message (or the console did when they are offline): tell the requester too if it is somebody else
+            boolean requesterIsInitiator = requester instanceof Player && ((Player) requester).getUniqueId().equals(initiator);
+            boolean requesterIsConsoleThatAlreadyHeard = !(requester instanceof Player) && Players.getPlayer(initiator) == null;
+            if (requester != null && !requesterIsInitiator && !requesterIsConsoleThatAlreadyHeard) {
+                requester.sendMessage(Message.of(ForkLangKeys.CLONE_CANCELLED)
+                        .defaultPrefix()
+                        .placeholderRaw("source", sourceName)
+                        .placeholder("percent", p));
+            }
+        } finally {
+            service.onJobEnded(this);
         }
-        service.onJobEnded(this);
     }
 
     // ------------------------------------------------------------------------------------------------ messages
@@ -683,10 +689,24 @@ final class ArenaCloneJob {
      * To the initiator, or to the console when they are offline.
      */
     private void send(@NotNull Message message) {
+        send(message, false);
+    }
+
+    /**
+     * Like {@link #send(Message)}, and additionally to the console when the initiator is online (finish / failure).
+     */
+    private void sendAndLog(@NotNull Message message) {
+        send(message, true);
+    }
+
+    private void send(@NotNull Message message, boolean alsoConsole) {
         message.defaultPrefix();
         var player = Players.getPlayer(initiator);
         if (player != null) {
             message.send(player);
+            if (alsoConsole) {
+                message.send(Server.getConsoleSender());
+            }
         } else {
             message.send(Server.getConsoleSender());
         }
