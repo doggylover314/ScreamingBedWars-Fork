@@ -23,10 +23,12 @@ import cloud.commandframework.Command;
 import cloud.commandframework.CommandManager;
 import cloud.commandframework.context.CommandContext;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.screamingsandals.bedwars.commands.AdminCommand;
 import org.screamingsandals.bedwars.game.GameImpl;
 import org.screamingsandals.bedwars.game.GameManagerImpl;
 import org.screamingsandals.bedwars.game.LocalGameLoaderImpl;
+import org.screamingsandals.bedwars.game.TeamImpl;
 import org.screamingsandals.bedwars.lang.LangKeys;
 import org.screamingsandals.lib.lang.Message;
 import org.screamingsandals.lib.sender.CommandSender;
@@ -106,6 +108,8 @@ public class SaveCommand extends BaseAdminSubCommand {
         }
 
         if (warnings.isEmpty()) {
+            // same result a reload gives; also keeps the saved file clean
+            relinkTeamReferences(game, null);
             LocalGameLoaderImpl.getInstance().saveGame(game);
             GameManagerImpl.getInstance().addGame(game);
             game.start();
@@ -125,5 +129,34 @@ public class SaveCommand extends BaseAdminSubCommand {
                         .clickEvent(ClickEvent.runCommand(forceCommand)).build())
                 .defaultPrefix());
         return false;
+    }
+
+    /**
+     * Re-links generators and shops whose team object is no longer part of the arena (team removed, or removed and added
+     * again, which creates a new object). Links are compared by identity everywhere at runtime, so a stale object would
+     * disable the generator or lock the shop. The team is looked up by name; the link is dropped when it does not exist.
+     *
+     * @param onlyTeamName only repair links to a team with this name (null: all stale links)
+     */
+    public static void relinkTeamReferences(@NotNull GameImpl game, @Nullable String onlyTeamName) {
+        for (var spawner : game.getSpawners()) {
+            var linked = spawner.getTeam();
+            if (isStaleLink(game, linked, onlyTeamName)) {
+                spawner.setTeam(game.getTeamFromName(linked.getName())); // TeamImpl overload, null if the team is gone
+            }
+        }
+        for (var store : game.getGameStoreList()) {
+            var linked = store.getTeam();
+            if (isStaleLink(game, linked, onlyTeamName)) {
+                store.setTeam(game.getTeamFromName(linked.getName()));
+            }
+        }
+    }
+
+    private static boolean isStaleLink(@NotNull GameImpl game, @Nullable TeamImpl linked, @Nullable String onlyTeamName) {
+        // contains() is identity based (TeamImpl has no equals), which is exactly what is needed here
+        return linked != null
+                && !game.getTeams().contains(linked)
+                && (onlyTeamName == null || linked.getName().equalsIgnoreCase(onlyTeamName));
     }
 }

@@ -56,7 +56,6 @@ import org.screamingsandals.lib.world.gamerule.GameRuleType;
 import org.spongepowered.configurate.BasicConfigurationNode;
 import org.spongepowered.configurate.ConfigurateException;
 import org.spongepowered.configurate.ConfigurationNode;
-import org.spongepowered.configurate.ConfigurationOptions;
 import org.spongepowered.configurate.serialize.SerializationException;
 
 import java.io.File;
@@ -551,8 +550,12 @@ public class LocalGameLoaderImpl implements LocalGameLoader {
     }
 
     /** In-memory serialization (no file touched); used by the arena clone. */
-    public @NotNull ConfigurationNode serializeGame(@NotNull GameImpl game) throws SerializationException {
-        var node = BasicConfigurationNode.root(ConfigurationOptions.defaults().serializers(SLibSerializers::makeSerializers));
+    public @NotNull ConfigurationNode serializeGame(@NotNull GameImpl game) throws ConfigurateException {
+        // Same node options as saveGame (arena loader + SLibSerializers): enums, UUIDs... are converted to native types
+        // when they are set. A plain BasicConfigurationNode keeps them as raw objects and the arena file loader
+        // refuses them later (root.from(node) in writeNewArenaFile). createNode() touches no disk, the file name only
+        // selects the json loader.
+        var node = ConfigurateUtils.getConfigurationLoaderForFile(new File("arena.json")).createNode();
         writeGameNode(game, node);
         return node;
     }

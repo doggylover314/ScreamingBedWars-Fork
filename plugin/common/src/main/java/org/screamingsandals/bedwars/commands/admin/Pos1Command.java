@@ -27,6 +27,7 @@ import org.screamingsandals.bedwars.commands.AdminCommand;
 import org.screamingsandals.bedwars.game.GameImpl;
 import org.screamingsandals.bedwars.game.GameManagerImpl;
 import org.screamingsandals.bedwars.lang.LangKeys;
+import org.screamingsandals.bedwars.setup.clone.ArenaCloneService;
 import org.screamingsandals.bedwars.utils.ArenaUtils;
 import org.screamingsandals.lib.lang.Message;
 import org.screamingsandals.lib.player.Player;
@@ -101,6 +102,14 @@ public class Pos1Command extends BaseAdminSubCommand {
                     );
                     return false;
                 }
+            }
+            if (ArenaCloneService.getInstance().overlapsRunningTarget(loc, game.getPos2())) { // target area of a running clone
+                sender.sendMessage(
+                        Message.of(LangKeys.ADMIN_ARENA_EDIT_ERRORS_OVERLAPPING_ARENAS)
+                                .defaultPrefix()
+                                .placeholder("command", forceCommand)
+                );
+                return false;
             }
         }
 

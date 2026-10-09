@@ -165,6 +165,14 @@ final class ArenaCloneJob {
         return targetName;
     }
 
+    @NotNull ClonePlanner.ClonePlan plan() {
+        return plan;
+    }
+
+    @NotNull String targetWorldName() {
+        return targetWorld.getName();
+    }
+
     @NotNull UUID sourceUuid() {
         return sourceUuid;
     }

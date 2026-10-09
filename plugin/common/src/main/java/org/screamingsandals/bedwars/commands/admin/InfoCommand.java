@@ -32,6 +32,8 @@ import org.screamingsandals.lib.spectator.Component;
 import org.screamingsandals.lib.spectator.event.ClickEvent;
 import org.screamingsandals.lib.utils.annotations.Service;
 
+import java.util.Optional;
+
 @Service
 public class InfoCommand extends BaseAdminSubCommand {
     public InfoCommand() {
@@ -263,10 +265,10 @@ public class InfoCommand extends BaseAdminSubCommand {
                 commandSenderWrapperBuilder.
                         literal("stores").
                         handler(commandContext -> {
-                            String gameName = commandContext.get("game");
                             var sender = commandContext.getSender();
 
-                            var gameOpt = GameManagerImpl.getInstance().getLocalGame(gameName);
+                            // also arenas that are not saved yet (the setup checklist suggests this command for them)
+                            var gameOpt = Optional.ofNullable(viewMode(commandContext));
                             if (gameOpt.isEmpty()) {
                                 sender.sendMessage(Message.of(LangKeys.IN_GAME_ERRORS_GAME_NOT_FOUND).defaultPrefix());
                                 return;
