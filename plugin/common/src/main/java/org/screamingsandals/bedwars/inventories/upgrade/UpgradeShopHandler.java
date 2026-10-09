@@ -172,13 +172,20 @@ public final class UpgradeShopHandler {
     }
 
     /**
-     * The name of the upgrade used in messages: the {@code shop-name} property, else the display name of the configured
-     * item, else the translated word "upgrade".
+     * The name of the upgrade used in messages: the {@code shop-name} property, else the first {@code shop-name} of an
+     * entity (legacy spawner and team entities keep honouring it), else the display name of the configured item, else
+     * the translated word "upgrade".
      */
     public static @NotNull Component itemName(@NotNull ConfigurationNode data, @Nullable ItemStack configuredStack, @NotNull BedWarsPlayer viewer) {
         var shopName = data.node("shop-name").getString();
         if (shopName != null && !shopName.isBlank()) {
             return Component.fromLegacy(shopName);
+        }
+        for (var entity : data.node("entities").childrenList()) {
+            var entityShopName = entity.node("shop-name").getString();
+            if (entityShopName != null && !entityShopName.isBlank()) {
+                return Component.fromLegacy(entityShopName);
+            }
         }
         if (configuredStack != null) {
             try {
