@@ -801,12 +801,23 @@ public class GameImpl implements LocalGame {
         if (MainLobby.shouldReturnPlayersAfterGame()) {
             var mainLobbyLocation = MainLobby.getLocation();
             if (mainLobbyLocation != null) {
-                Tasker.runDelayed(gamePlayer, () -> {
-                    if (!gamePlayer.isInGame()) { // the player may have switched into another game in the same tick (party pull, NPC join)
-                        gamePlayer.teleport(mainLobbyLocation);
+                try {
+                    if (gamePlayer.forceSynchronousTeleportation) {
+                        // player quit / the plugin is shutting down: a delayed task would never move him (or the scheduler
+                        // refuses it), and he is saved by the server right after this. Move now; if that fails,
+                        // mainLobbyUsed stays false and BedWarsPlayer#restoreInv teleports to the stored left location
+                        gamePlayer.mainLobbyUsed = Boolean.TRUE.equals(gamePlayer.teleport(mainLobbyLocation).getNow(false));
+                    } else {
+                        Tasker.runDelayed(gamePlayer, () -> {
+                            if (!gamePlayer.isInGame()) { // the player may have switched into another game in the same tick (party pull, NPC join)
+                                gamePlayer.teleport(mainLobbyLocation);
+                            }
+                        }, 1L, TaskerTime.TICKS);
+                        gamePlayer.mainLobbyUsed = true; // only once the task really exists
                     }
-                }, 1L, TaskerTime.TICKS);
-                gamePlayer.mainLobbyUsed = true;
+                } catch (Throwable t) { // for example the scheduler refuses new tasks while the plugin is disabling
+                    BedWarsPlugin.getInstance().getLogger().warn("Could not move {} to the main lobby, falling back to the stored left location", gamePlayer.getName(), t);
+                }
             } else {
                 BedWarsPlugin.getInstance().getLogger().error("main-lobby is enabled but main-lobby.world/location is missing or invalid! Use /bw mainlobby set.");
             }
@@ -886,7 +897,17 @@ public class GameImpl implements LocalGame {
         }
         var clonedPlayers = new ArrayList<>(players);
         for (BedWarsPlayer p : clonedPlayers) {
-            p.changeGame(null);
+            // stop() runs from GameManagerImpl#onPreDisable, where the scheduler already refuses new tasks: everything
+            // that has to happen for the leaving player (main lobby / stored location) must happen synchronously
+            var previousSync = p.forceSynchronousTeleportation;
+            p.forceSynchronousTeleportation = true;
+            try {
+                p.changeGame(null);
+            } catch (Throwable t) { // one failing player must not skip the cleanup of the others
+                BedWarsPlugin.getInstance().getLogger().warn("Could not remove " + p.getName() + " from arena " + name + " while stopping it", t);
+            } finally {
+                p.forceSynchronousTeleportation = previousSync;
+            }
         }
         clearActiveMode();
         if (status != GameStatus.REBUILDING) {

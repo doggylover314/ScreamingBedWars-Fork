@@ -62,8 +62,10 @@ public class JoinGroupCommand extends BaseCommand {
                             var games = groupManager.getGamesInGroup(group);
 
                             if (!games.isEmpty()) {
-                                MiscUtils.getGameWithHighestPlayers(games, false).ifPresentOrElse(
-                                        game1 -> game1.joinToGame(PlayerManagerImpl.getInstance().getPlayerOrCreate(player)),
+                                var bwPlayer = PlayerManagerImpl.getInstance().getPlayerOrCreate(player);
+                                // fork: a party leader gets an arena with room for his party
+                                MiscUtils.getGameWithHighestPlayers(games, false, bwPlayer).ifPresentOrElse(
+                                        game1 -> game1.joinToGame(bwPlayer),
                                         () -> sender.sendMessage(Message.of(LangKeys.IN_GAME_ERRORS_GAME_NOT_FOUND).defaultPrefix())
                                 );
                             } else {

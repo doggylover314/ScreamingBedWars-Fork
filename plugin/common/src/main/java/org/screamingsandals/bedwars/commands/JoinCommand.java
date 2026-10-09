@@ -24,6 +24,7 @@ import cloud.commandframework.CommandManager;
 import org.screamingsandals.bedwars.game.GameManagerImpl;
 import org.screamingsandals.bedwars.lang.LangKeys;
 import org.screamingsandals.bedwars.player.PlayerManagerImpl;
+import org.screamingsandals.bedwars.utils.MiscUtils;
 import org.screamingsandals.lib.lang.Message;
 import org.screamingsandals.lib.player.Player;
 import org.screamingsandals.lib.sender.CommandSender;
@@ -64,8 +65,10 @@ public class JoinCommand extends BaseCommand {
                                         () -> sender.sendMessage(Message.of(LangKeys.IN_GAME_ERRORS_GAME_NOT_FOUND).defaultPrefix())
                                 );
                             } else {
-                                GameManagerImpl.getInstance().getGameWithHighestPlayers(false).ifPresentOrElse(
-                                        game1 -> game1.joinToGame(PlayerManagerImpl.getInstance().getPlayerOrCreate(player)),
+                                var bwPlayer = PlayerManagerImpl.getInstance().getPlayerOrCreate(player);
+                                // fork: a party leader gets an arena with room for his party
+                                MiscUtils.getGameWithHighestPlayers(GameManagerImpl.getInstance().getGames(), false, bwPlayer).ifPresentOrElse(
+                                        game1 -> game1.joinToGame(bwPlayer),
                                         () -> sender.sendMessage(Message.of(LangKeys.IN_GAME_ERRORS_GAME_NOT_FOUND).defaultPrefix())
                                 );
                             }

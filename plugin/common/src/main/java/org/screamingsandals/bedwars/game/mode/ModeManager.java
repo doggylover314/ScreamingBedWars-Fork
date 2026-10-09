@@ -41,6 +41,7 @@ import org.screamingsandals.lib.utils.annotations.methods.OnPostEnable;
 import org.screamingsandals.lib.utils.annotations.methods.OnPreDisable;
 import org.screamingsandals.lib.utils.logger.Logger;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -197,7 +198,10 @@ public class ModeManager {
     public @NotNull ModeStats getStats(@NotNull ModeDefinition mode) {
         int waiting = 0;
         int playing = 0;
+        // one pass over the arenas: this is evaluated for every hologram line / PAPI request
+        var snapshots = new ArrayList<ArenaSnapshot>();
         for (var game : GameManagerImpl.getInstance().getLocalGames()) {
+            snapshots.add(snapshot(game, false));
             var active = game.getActiveMode();
             if (active == null || !active.id().equals(mode.id())) {
                 continue;
@@ -214,7 +218,7 @@ public class ModeManager {
                     break;
             }
         }
-        return new ModeStats(waiting, playing, ModeArenaSelector.countJoinable(snapshotArenas(false), mode));
+        return new ModeStats(waiting, playing, ModeArenaSelector.countJoinable(snapshots, mode));
     }
 
     public @NotNull ModeStats getStats(@NotNull String modeId) {

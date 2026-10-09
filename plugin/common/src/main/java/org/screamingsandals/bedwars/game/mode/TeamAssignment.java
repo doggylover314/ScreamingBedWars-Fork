@@ -226,6 +226,7 @@ public final class TeamAssignment {
             var party = ModePartyBridge.partyOf(player.getUuid());
             if (party.isPresent() && party.get().onlineSize() > 1) {
                 int alreadyTeamed = 0;
+                int teamlessHere = 0; // party members in THIS game who still need a team (not counting the joining player)
                 for (var memberUuid : party.get().members()) {
                     if (memberUuid.equals(player.getUuid())) {
                         continue;
@@ -236,6 +237,9 @@ public final class TeamAssignment {
                     }
                     var team = game.getPlayerTeam(member);
                     if (team == null) {
+                        if (!member.isSpectator()) {
+                            teamlessHere++;
+                        }
                         continue;
                     }
                     alreadyTeamed++;
@@ -243,13 +247,32 @@ public final class TeamAssignment {
                         return team; // join the party's team
                     }
                 }
-                var name = ClassicTeamFiller.chooseTeam(slotsOf(game), Math.max(1, party.get().onlineSize() - alreadyTeamed));
+                var name = chooseTeamForGroup(slotsOf(game), Math.max(1, party.get().onlineSize() - alreadyTeamed), 1 + teamlessHere);
                 if (name != null) {
                     return game.getTeamFromName(name);
                 }
             }
         }
         return game.chooseRandomTeamForPlayerToJoin(false, false);
+    }
+
+    /**
+     * Team for a joining party member: prefers a team with room for the rest of the party ({@code wantedSize}, so the
+     * members that are still to arrive can follow), but never asks for more than the members that are really here to be
+     * placed ({@code minimumSize}): on small teams the party is then kept together as far as the team size allows
+     * instead of falling back to a random team.
+     *
+     * @return the team name or {@code null} if no team has room for {@code minimumSize}
+     */
+    static @Nullable String chooseTeamForGroup(@NotNull List<ClassicTeamFiller.TeamSlot> slots, int wantedSize, int minimumSize) {
+        int min = Math.max(1, minimumSize);
+        for (int size = Math.max(min, wantedSize); size >= min; size--) {
+            var name = ClassicTeamFiller.chooseTeam(slots, size);
+            if (name != null) {
+                return name;
+            }
+        }
+        return null;
     }
 
     /**
