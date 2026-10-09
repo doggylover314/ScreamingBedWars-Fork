@@ -26,19 +26,22 @@ import org.jetbrains.annotations.Nullable;
 import org.screamingsandals.bedwars.api.game.upgrade.Upgradable;
 import org.screamingsandals.bedwars.game.TeamImpl;
 import org.screamingsandals.bedwars.lib.debug.Debug;
+import org.screamingsandals.lib.item.meta.PotionEffect;
+import org.screamingsandals.lib.item.meta.PotionEffectType;
 import org.spongepowered.configurate.ConfigurateException;
 import org.spongepowered.configurate.ConfigurationNode;
 
 import java.util.ArrayList;
 
 /**
- * Team upgrade that gives the team extra ender dragons in sudden death.
- * The sudden-death code reads the bought level through {@link #getExtraDragons(TeamImpl)}.
+ * Team upgrade that grants a potion effect to all alive members (Maniac Miner = Haste I/II).
+ * Applied by {@link TeamEffectUpgradeHandler}.
  */
 @Getter
 @RequiredArgsConstructor
-public class DragonBuffUpgradeDefinition implements BuiltInUpgradeDefinition {
-    private final @NotNull DragonBuffSpec spec;
+public class EffectUpgradeDefinition implements BuiltInUpgradeDefinition {
+    private final @NotNull EffectUpgradeSpec spec;
+    private final @NotNull PotionEffectType type;
 
     @Override
     public double getInitialLevel() {
@@ -56,40 +59,26 @@ public class DragonBuffUpgradeDefinition implements BuiltInUpgradeDefinition {
     }
 
     /**
-     * Extra sudden-death dragons the team gets from its Dragon Buff upgrade.
-     * Sudden death spawns {@code 1 + getExtraDragons(team)} dragons per alive team.
-     *
-     * @return the number of extra dragons; 0 if none were bought or the variant has no dragon-buff upgrade
+     * @return the effect for this level, or {@code null} when the level gives no effect
      */
-    public static int getExtraDragons(@NotNull TeamImpl team) {
-        var game = team.getGame();
-        if (game == null) {
-            return 0;
-        }
-        int extra = 0;
-        for (var entry : game.getGameVariant().getUpgrades().entrySet()) {
-            if (!(entry.getValue() instanceof DragonBuffUpgradeDefinition)) {
-                continue;
-            }
-            var upgrade = team.getUpgrade(entry.getKey());
-            if (upgrade == null) {
-                continue;
-            }
-            extra += ((DragonBuffUpgradeDefinition) entry.getValue()).getSpec()
-                    .extraDragonsFor((int) Math.floor(upgrade.getLevel() - upgrade.getInitialLevel() + 1e-9));
-        }
-        return Math.max(0, extra);
+    public @Nullable PotionEffect effectForLevel(int level) {
+        int amplifier = spec.amplifierFor(level);
+        return amplifier < 0 ? null : type.asEffect(spec.appliedDuration(), amplifier, spec.ambient(), spec.particles(), spec.icon());
     }
 
-    public static class Loader implements BuiltInUpgradeDefinition.Loader<DragonBuffUpgradeDefinition> {
+    public static class Loader implements BuiltInUpgradeDefinition.Loader<EffectUpgradeDefinition> {
         public static final @NotNull Loader INSTANCE = new Loader();
 
         @Override
-        public @NotNull DragonBuffUpgradeDefinition load(@NotNull ConfigurationNode node) throws ConfigurateException {
+        public @NotNull EffectUpgradeDefinition load(@NotNull ConfigurationNode node) throws ConfigurateException {
             var warnings = new ArrayList<String>();
-            var spec = DragonBuffSpec.parse(node, warnings);
-            warnings.forEach(w -> Debug.warn("Dragon buff upgrade " + node.key() + ": " + w, true));
-            return new DragonBuffUpgradeDefinition(spec);
+            var spec = EffectUpgradeSpec.parse(node, warnings);
+            warnings.forEach(w -> Debug.warn("Effect upgrade " + node.key() + ": " + w, true));
+            var type = PotionEffectType.ofNullable(spec.effect());
+            if (type == null) {
+                throw new ConfigurateException("Unknown potion effect " + spec.effect() + " (not available on this server version?)");
+            }
+            return new EffectUpgradeDefinition(spec, type);
         }
     }
 }

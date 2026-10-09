@@ -32,6 +32,10 @@ import org.spongepowered.configurate.ConfigurationNode;
 
 import java.util.List;
 
+/**
+ * Permanent base area effect (Heal Pool) when {@code singular-use} is false; legacy single-use trap otherwise.
+ * Hypixel-like traps use the trap queue instead (variant section {@code trap-queue}).
+ */
 @RequiredArgsConstructor
 @Getter
 public class TrapUpgradeDefinition implements BuiltInUpgradeDefinition {

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2025 ScreamingSandals
+ * Copyright (C) 2026 ScreamingSandals
  *
  * This file is part of Screaming BedWars.
  *
@@ -17,13 +17,17 @@
  * along with Screaming BedWars. If not, see <https://www.gnu.org/licenses/>.
  */
 
-@Init(services = {
-        EnchantmentUpgradeHandler.class,
-        TrapEffectUpgradeHandler.class,
-        TeamEffectUpgradeHandler.class,
-        ForgeUpgradeHandler.class,
-        UpgradeItemListener.class
-})
-package org.screamingsandals.bedwars.game.upgrade.builtin;
+package org.screamingsandals.bedwars.game.upgrade.trap;
 
-import org.screamingsandals.lib.utils.annotations.Init;
+import org.jetbrains.annotations.NotNull;
+
+import java.util.Map;
+
+/**
+ * Parsed, platform independent {@code trap-queue:} section. Pure value class.
+ *
+ * @param traps insertion-ordered, unmodifiable
+ */
+public record TrapQueueConfig(@NotNull TrapQueueSettings settings, @NotNull Map<String, QueuedTrapSpec> traps) {
+    public static final TrapQueueConfig DISABLED = new TrapQueueConfig(TrapQueueSettings.DISABLED, Map.of());
+}

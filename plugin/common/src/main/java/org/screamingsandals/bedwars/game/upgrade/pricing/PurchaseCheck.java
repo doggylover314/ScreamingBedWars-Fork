@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2025 ScreamingSandals
+ * Copyright (C) 2026 ScreamingSandals
  *
  * This file is part of Screaming BedWars.
  *
@@ -17,13 +17,24 @@
  * along with Screaming BedWars. If not, see <https://www.gnu.org/licenses/>.
  */
 
-@Init(services = {
-        EnchantmentUpgradeHandler.class,
-        TrapEffectUpgradeHandler.class,
-        TeamEffectUpgradeHandler.class,
-        ForgeUpgradeHandler.class,
-        UpgradeItemListener.class
-})
-package org.screamingsandals.bedwars.game.upgrade.builtin;
+package org.screamingsandals.bedwars.game.upgrade.pricing;
 
-import org.screamingsandals.lib.utils.annotations.Init;
+/**
+ * Result of validating an upgrade purchase before anything is charged. Pure enum.
+ */
+public enum PurchaseCheck {
+    /** The purchase may proceed. */
+    OK,
+    /** The team already owns the highest level. */
+    MAXED,
+    /** A legacy spawner upgrade would exceed its maximum level. */
+    LEGACY_MAX_LEVEL,
+    /** The trap queue has no free slot. */
+    QUEUE_FULL,
+    /** The trap is already queued and duplicates are not allowed. */
+    ALREADY_QUEUED,
+    /** A legacy spawner upgrade matched no spawner. */
+    NOTHING_TO_UPGRADE,
+    /** The item is misconfigured or not available in this arena. */
+    UNAVAILABLE
+}

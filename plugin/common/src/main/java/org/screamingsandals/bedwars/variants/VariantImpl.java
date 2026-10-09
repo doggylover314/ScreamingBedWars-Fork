@@ -32,6 +32,7 @@ import org.screamingsandals.bedwars.config.GameConfigurationContainerImpl;
 import org.screamingsandals.bedwars.game.ItemSpawnerTypeImpl;
 import org.screamingsandals.bedwars.game.timeline.TimelineDefinition;
 import org.screamingsandals.bedwars.game.upgrade.builtin.BuiltInUpgradeDefinition;
+import org.screamingsandals.bedwars.game.upgrade.trap.TrapQueueDefinition;
 import org.screamingsandals.bedwars.variants.prefab.Prefab;
 
 import java.io.File;
@@ -59,6 +60,8 @@ public class VariantImpl implements Variant {
     private boolean defaultItemSpawnerTypesIncluded = true;
     @Setter(AccessLevel.PROTECTED)
     private @NotNull TimelineDefinition timeline = TimelineDefinition.EMPTY;
+    @Setter(AccessLevel.PROTECTED)
+    private @NotNull TrapQueueDefinition trapQueue = TrapQueueDefinition.DISABLED;
 
     @Override
     public @NotNull List<@NotNull ItemSpawnerTypeImpl> getItemSpawnerTypes() {
