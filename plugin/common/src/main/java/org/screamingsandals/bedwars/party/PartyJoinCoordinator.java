@@ -326,21 +326,6 @@ public class PartyJoinCoordinator {
                 partyManager.getSettings().pullFromRunningGames()).needed();
     }
 
-    /**
-     * Free slots this join needs in the game (party-aware; 1 for a solo player, 0 if he is already in the game).
-     */
-    public int requiredSlots(@NotNull BedWarsPlayer player, @NotNull GameImpl game) {
-        int solo = player.getGame() == game ? 0 : 1;
-        var party = partyManager.isEnabled() ? partyManager.getParty(player.getUuid()).orElse(null) : null;
-        if (party == null || !party.isLeader(player.getUuid()) || GameImpl.isBungeeEnabled()) {
-            return solo;
-        }
-        if (!game.getConfigurationContainer().getOrDefault(PartyConfigKeys.AUTOJOIN_MEMBERS, partyManager.getSettings().autojoinMembers())) {
-            return solo;
-        }
-        return planFor(player, party, game).needed();
-    }
-
     private void sendPlanError(@NotNull BedWarsPlayer leader, @NotNull GameImpl game, @NotNull PartyJoinPlanner.Plan plan) {
         switch (plan.outcome()) {
             case NO_ROOM:
