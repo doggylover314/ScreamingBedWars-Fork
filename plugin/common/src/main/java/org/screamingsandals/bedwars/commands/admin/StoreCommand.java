@@ -22,7 +22,10 @@ package org.screamingsandals.bedwars.commands.admin;
 import cloud.commandframework.Command;
 import cloud.commandframework.CommandManager;
 import cloud.commandframework.arguments.standard.StringArgument;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.screamingsandals.bedwars.commands.AdminCommand;
+import org.screamingsandals.bedwars.game.GameImpl;
 import org.screamingsandals.bedwars.game.GameStoreImpl;
 import org.screamingsandals.bedwars.game.TeamImpl;
 import org.screamingsandals.bedwars.lang.LangKeys;
@@ -34,6 +37,7 @@ import org.screamingsandals.lib.sender.CommandSender;
 import org.screamingsandals.lib.utils.ResourceLocation;
 import org.screamingsandals.lib.utils.annotations.Service;
 import org.screamingsandals.lib.utils.annotations.parameters.DataFolder;
+import org.screamingsandals.lib.world.Location;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -55,42 +59,8 @@ public class StoreCommand extends BaseAdminSubCommand {
         manager.command(
                 commandSenderWrapperBuilder
                         .literal("add")
-                        .handler(commandContext -> editMode(commandContext, (sender, game) -> {
-                            var loc = sender.as(Player.class).getLocation();
-
-                            if (game.getPos1() == null || game.getPos2() == null) {
-                                sender.sendMessage(Message.of(LangKeys.ADMIN_ARENA_EDIT_ERRORS_SET_BOUNDS_FIRST).defaultPrefix());
-                                return;
-                            }
-                            if (!game.getWorld().equals(loc.getWorld())) {
-                                sender.sendMessage(Message.of(LangKeys.ADMIN_ARENA_EDIT_ERRORS_MUST_BE_IN_SAME_WORLD).defaultPrefix());
-                                return;
-                            }
-                            if (!ArenaUtils.isInArea(loc, game.getPos1(), game.getPos2())) {
-                                sender.sendMessage(Message.of(LangKeys.ADMIN_ARENA_EDIT_ERRORS_MUST_BE_IN_BOUNDS).defaultPrefix());
-                                return;
-                            }
-                            var store = game.getGameStoreList()
-                                    .stream()
-                                    .filter(gameStore -> gameStore.getStoreLocation().getBlock().equals(loc.getBlock()))
-                                    .findFirst();
-
-                            if (store.isPresent()) {
-                                sender.sendMessage(Message.of(LangKeys.ADMIN_ARENA_EDIT_ERRORS_STORE_ALREADY_EXIST).defaultPrefix());
-                                return;
-                            }
-                            game.getGameStoreList().add(new GameStoreImpl(loc));
-                            sender.sendMessage(
-                                    Message
-                                    .of(LangKeys.ADMIN_ARENA_EDIT_SUCCESS_STORE_ADDED)
-                                    .defaultPrefix()
-                                    .placeholder("x", loc.getX(), 2)
-                                    .placeholder("y", loc.getY(), 2)
-                                    .placeholder("z", loc.getZ(), 2)
-                                    .placeholder("yaw", loc.getYaw(), 5)
-                                    .placeholder("pitch", loc.getPitch(), 5)
-                            );
-                        }))
+                        .handler(commandContext -> editMode(commandContext,
+                                (sender, game) -> addStore(sender, game, sender.as(Player.class).getLocation())))
         );
 
         manager.command(
@@ -441,5 +411,45 @@ public class StoreCommand extends BaseAdminSubCommand {
                             sender.sendMessage(Message.of(LangKeys.ADMIN_ARENA_EDIT_ERRORS_STORE_DOES_NOT_EXIST).defaultPrefix());
                         }))
         );
+    }
+
+    /**
+     * Adds an item shop at the given location. Returns the new store, or null (after sending the error) on failure.
+     */
+    public static @Nullable GameStoreImpl addStore(@NotNull CommandSender sender, @NotNull GameImpl game, @NotNull Location loc) {
+        if (game.getPos1() == null || game.getPos2() == null) {
+            sender.sendMessage(Message.of(LangKeys.ADMIN_ARENA_EDIT_ERRORS_SET_BOUNDS_FIRST).defaultPrefix());
+            return null;
+        }
+        if (!game.getWorld().equals(loc.getWorld())) {
+            sender.sendMessage(Message.of(LangKeys.ADMIN_ARENA_EDIT_ERRORS_MUST_BE_IN_SAME_WORLD).defaultPrefix());
+            return null;
+        }
+        if (!ArenaUtils.isInArea(loc, game.getPos1(), game.getPos2())) {
+            sender.sendMessage(Message.of(LangKeys.ADMIN_ARENA_EDIT_ERRORS_MUST_BE_IN_BOUNDS).defaultPrefix());
+            return null;
+        }
+        var existing = game.getGameStoreList()
+                .stream()
+                .filter(gameStore -> gameStore.getStoreLocation().getBlock().equals(loc.getBlock()))
+                .findFirst();
+
+        if (existing.isPresent()) {
+            sender.sendMessage(Message.of(LangKeys.ADMIN_ARENA_EDIT_ERRORS_STORE_ALREADY_EXIST).defaultPrefix());
+            return null;
+        }
+        var store = new GameStoreImpl(loc);
+        game.getGameStoreList().add(store);
+        sender.sendMessage(
+                Message
+                        .of(LangKeys.ADMIN_ARENA_EDIT_SUCCESS_STORE_ADDED)
+                        .defaultPrefix()
+                        .placeholder("x", loc.getX(), 2)
+                        .placeholder("y", loc.getY(), 2)
+                        .placeholder("z", loc.getZ(), 2)
+                        .placeholder("yaw", loc.getYaw(), 5)
+                        .placeholder("pitch", loc.getPitch(), 5)
+        );
+        return store;
     }
 }

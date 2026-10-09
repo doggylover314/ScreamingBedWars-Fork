@@ -29,6 +29,16 @@ public class BedUtils {
             return null;
         }
 
+        var data = head.block();
+        var offset = BedGeometry.otherHalf(data.get("part"), data.get("facing")); // exact, from the block states
+        if (offset != null) {
+            // The exact other half is known. Never scan for a neighbour here: if this half's partner is gone (half of
+            // the bed was destroyed), scanning could return the half of an adjacent bed that belongs to another team.
+            // Callers tolerate a non-bed block being returned (they check isBedBlock or it is simply replaced by air).
+            return head.location().add(offset[0], 0, offset[1]).getBlock();
+        }
+
+        // legacy fallback (unchanged old scan) only for versions/blocks without part/facing states
         if (isBedBlock(head.location().add(BlockFace.EAST).getBlock())) {
             return head.location().add(BlockFace.EAST).getBlock();
         } else if (isBedBlock(head.location().add(BlockFace.WEST).getBlock())) {
