@@ -25,5 +25,12 @@ public enum TargetInvalidationReason {
     TARGET_BLOCK_EATEN,
     TIMEOUT,
     COMMAND,
-    PLUGIN
+    PLUGIN,
+    /**
+     * The target was invalidated by a timed game event (bed destruction / sudden death).
+     * The plugin sends one announcement for all teams instead of per-team messages.
+     *
+     * @since 0.3.0
+     */
+    GAME_EVENT
 }

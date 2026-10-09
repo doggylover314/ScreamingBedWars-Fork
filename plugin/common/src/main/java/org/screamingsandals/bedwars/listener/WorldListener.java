@@ -26,6 +26,7 @@ import org.screamingsandals.bedwars.api.game.GameStatus;
 import org.screamingsandals.bedwars.config.MainConfig;
 import org.screamingsandals.bedwars.entities.EntitiesManagerImpl;
 import org.screamingsandals.bedwars.game.GameManagerImpl;
+import org.screamingsandals.bedwars.game.endgame.GameEndgameService;
 import org.screamingsandals.bedwars.game.target.TargetBlockImpl;
 import org.screamingsandals.bedwars.player.PlayerManagerImpl;
 import org.screamingsandals.bedwars.utils.ArenaUtils;
@@ -129,6 +130,9 @@ public class WorldListener {
             return;
         }
         var entity = event.entity();
+        if (GameEndgameService.getInstance().isManagedDragon(entity)) {
+            return; // sudden death dragons: filtered and recorded by GameEndgameService#onDragonExplode
+        }
         boolean originatedInArena = EntitiesManagerImpl.getInstance().isEntityInGame(entity);
         if (!originatedInArena && entity instanceof ProjectileEntity) {
             var shooter = ((ProjectileEntity) entity).getShooter();
@@ -283,8 +287,8 @@ public class WorldListener {
                 } else if (game.getStatus() != GameStatus.DISABLED) {
                     event.cancelled(true);
                 }
+                return;
             }
-            break;
         }
     }
 
