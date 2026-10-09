@@ -265,9 +265,30 @@ public class BukkitPlatformService extends PlatformService {
             if (entity instanceof Player) {
                 return false;
             }
+            if (entity instanceof org.bukkit.entity.Hanging) {
+                // Entity#copy(Location) keeps the attachment block of a hanging entity, so the copy is discarded at the
+                // new place ("Block-attached entity at invalid position"): spawn a fresh one and copy its properties.
+                var hanging = (org.bukkit.entity.Hanging) entity;
+                return source.getEntityType().spawn(target, spawned -> copyHangingData(hanging, spawned.as(org.bukkit.entity.Hanging.class))) != null;
+            }
             return ENTITY_COPY.invoke(entity, target.as(Location.class)) != null;
         } catch (Throwable t) {
             return false;
+        }
+    }
+
+    private static void copyHangingData(org.bukkit.entity.Hanging from, org.bukkit.entity.Hanging to) {
+        to.setFacingDirection(from.getFacing(), true);
+        if (from instanceof org.bukkit.entity.ItemFrame && to instanceof org.bukkit.entity.ItemFrame) {
+            var src = (org.bukkit.entity.ItemFrame) from;
+            var dst = (org.bukkit.entity.ItemFrame) to;
+            dst.setItem(src.getItem(), false);
+            dst.setRotation(src.getRotation());
+            dst.setVisible(src.isVisible());
+            dst.setFixed(src.isFixed());
+            dst.setItemDropChance(src.getItemDropChance());
+        } else if (from instanceof org.bukkit.entity.Painting && to instanceof org.bukkit.entity.Painting) {
+            ((org.bukkit.entity.Painting) to).setArt(((org.bukkit.entity.Painting) from).getArt(), true);
         }
     }
 }
