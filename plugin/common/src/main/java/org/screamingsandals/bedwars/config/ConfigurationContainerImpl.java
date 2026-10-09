@@ -204,6 +204,20 @@ public class ConfigurationContainerImpl implements ConfigurationContainer {
         }
     }
 
+    /**
+     * Registers the key and binds it to the config.yml node with the same path.
+     */
+    public <T> void registerGlobal(ConfigurationKey<T> key) {
+        register(key, key.getKey().toArray(String[]::new));
+    }
+
+    /**
+     * Registers the list key and binds it to the config.yml node with the same path.
+     */
+    public <T> void registerGlobal(ConfigurationListKey<T> key) {
+        register(key, key.getKey().toArray(String[]::new));
+    }
+
     public void update(List<String> key, Object object) {
         try {
             remove(key);

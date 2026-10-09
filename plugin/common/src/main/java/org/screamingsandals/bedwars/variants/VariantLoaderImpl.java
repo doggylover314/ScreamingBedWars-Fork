@@ -24,6 +24,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.screamingsandals.bedwars.api.variants.VariantLoader;
 import org.screamingsandals.bedwars.game.ItemSpawnerTypeImpl;
+import org.screamingsandals.bedwars.game.timeline.TimelineVariantLoader;
 import org.screamingsandals.bedwars.game.upgrade.builtin.BuiltInUpgradeDefinition;
 import org.screamingsandals.bedwars.game.upgrade.builtin.EnchantmentUpgradeDefinition;
 import org.screamingsandals.bedwars.game.upgrade.builtin.TrapUpgradeDefinition;
@@ -126,6 +127,11 @@ public class VariantLoaderImpl implements VariantLoader {
                         logger.error("Could not load a built-in upgrade from variant {}", variant.getName(), exception);
                     }
                 });
+            }
+
+            var timelineNode = configMap.node("timeline");
+            if (!timelineNode.virtual()) {
+                variant.setTimeline(TimelineVariantLoader.load(variant, timelineNode, logger));
             }
 
             Server.getConsoleSender().sendMessage(

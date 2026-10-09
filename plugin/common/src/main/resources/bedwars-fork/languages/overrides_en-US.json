@@ -1,0 +1,8 @@
+{
+  "in_game": {
+    "trap": {
+      "blind_trap_triggered": { "message": "<yellow>You have been blinded by <team> <yellow>team!" },
+      "miner_trap_triggered": { "message": "<yellow>You have been slowed by <team> <yellow>team!" }
+    }
+  }
+}

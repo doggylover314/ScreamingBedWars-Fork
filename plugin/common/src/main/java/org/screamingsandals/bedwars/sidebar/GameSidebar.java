@@ -26,6 +26,7 @@ import org.screamingsandals.bedwars.game.GameImpl;
 import org.screamingsandals.bedwars.game.TeamImpl;
 import org.screamingsandals.bedwars.game.target.AExpirableTarget;
 import org.screamingsandals.bedwars.game.target.TargetBlockImpl;
+import org.screamingsandals.bedwars.game.timeline.GameTimelineService;
 import org.screamingsandals.bedwars.lang.LangKeys;
 import org.screamingsandals.bedwars.player.BedWarsPlayer;
 import org.screamingsandals.bedwars.player.PlayerManagerImpl;
@@ -169,9 +170,10 @@ public class GameSidebar {
                         .placeholder("version", VersionInfo.VERSION)
                         .placeholder("date", MiscUtils.getFormattedDate(game.getConfigurationContainer().getOrDefault(GameConfigurationContainer.SIDEBAR_DATE_FORMAT, "date-format")))
                         .placeholder("mode", checkMode())
-                        .placeholder("tier", () -> Component.text("Not implemented yet.", Color.RED)) // TODO
-                        .placeholder("kills", () -> Component.text("Not implemented yet.", Color.RED)) // TODO
-                        .placeholder("target-blocks-destroyed", () -> Component.text("Not implemented yet.", Color.RED)) // TODO
+                        .placeholder("tier", sender -> GameTimelineService.getInstance().renderSidebarTier(game, sender))
+                        .placeholder("kills", sender -> Component.text(GameTimelineService.getInstance().getKills(game, sender)))
+                        .placeholder("final-kills", sender -> Component.text(GameTimelineService.getInstance().getFinalKills(game, sender)))
+                        .placeholder("target-blocks-destroyed", sender -> Component.text(GameTimelineService.getInstance().getTargetBlocksDestroyed(game, sender)))
         );
     }
 

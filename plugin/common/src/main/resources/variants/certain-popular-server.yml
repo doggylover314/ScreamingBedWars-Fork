@@ -16,8 +16,11 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with Screaming BedWars. If not, see <https://www.gnu.org/licenses/>.
 #
+# fork-revision: 1
 
-# NOTE: This file is currently WIP, if you want newer revision, please delete this file and reload bw plugin, new file will be created
+# NOTE: This file is managed by the plugin. A copy with a lower '# fork-revision' than the bundled one is replaced on startup
+# (the old copy is kept next to it as certain-popular-server.yml.rev<N>.<time>.bak.disabled), unless bundled-files.auto-update
+# is false in config.yml. Put your own changes into a separate variant file instead of editing this one.
 name: certain-popular-server
 
 config:
@@ -29,6 +32,8 @@ config:
   use-team-letter-prefixes-before-player-names: true
   use-certain-popular-server-titles: true
   show-game-info-on-start: true
+  modes:
+    only-via-mode-selection: false   # fork: true = players join these arenas ONLY through mode NPCs / /bw mode join (admins bypass; ignored in bungee mode)
   bossbar:
     game:
       enabled: false
@@ -62,6 +67,7 @@ config:
         content:
           - ""
           - "<white>Kills: <green><kills>"
+          - "<white>Final Kills: <green><final-kills>"
           - "<white>Bed Broken: <green><target-blocks-destroyed>"
     lobby:
       enabled: true
@@ -90,6 +96,30 @@ config:
     enabled: true
     blacklist:
       - glass
+  # Bed destruction / sudden death / time limit. Approximate Hypixel behaviour, every value can be changed.
+  bed-destruction:
+    announce: true
+  sudden-death:
+    enabled: true
+    destroy-targets: true
+    bossbar-message: true
+    dragon:
+      per-team: 1                 # Dragon Buff adds one more (upgrade-shop)
+      speed: 0.8                  # approximate
+      turn-rate: 6.0
+      invulnerable: true
+      damage-own-team: false
+      block-destruction: placed   # only blocks placed by players are destroyed; 'all' would also break map blocks (they are restored when the arena rebuilds)
+  game-end-by-time:
+    mode: draw                    # Hypixel-like: nobody wins when the time runs out
+  setup:
+    team-generator-types:
+      - iron
+      - gold
+    team-generator-hologram: false        # Hypixel base generators have no hologram
+    diamond-spawner-type: diamond
+    emerald-spawner-type: emerald
+    upgrade-shop-file: certain-popular-server/upgrade-shop.yml
 
 
 # TODO: breakable blocks (GRASS, LONG_GRASS, SNOW)
@@ -126,6 +156,7 @@ custom-spawner-types:
     color: GOLD
     name: Gold
 
+# Team upgrades. Values marked "approx." are approximate Hypixel values and can be changed freely.
 upgrades:
   sharpness:
     type: enchantment
@@ -133,13 +164,14 @@ upgrades:
     max-level: 1
     apply-to:
       - "#minecraft:swords"
+      - "#minecraft:axes"          # Hypixel's Sharpened Swords also affect axes
   knockback:
     type: enchantment
     enchantment: minecraft:knockback
     max-level: 1
     apply-to:
       - "#minecraft:swords"
-  efficiency:
+  efficiency:                      # kept for custom shops; the bundled upgrade shop sells "haste" instead
     type: enchantment
     enchantment: minecraft:efficiency
     max-level: 2
@@ -154,53 +186,142 @@ upgrades:
       - "#minecraft:foot_armor"
       - "#minecraft:chest_armor"
       - "#minecraft:leg_armor"
-  healpool:
-    type: trap
+  haste:                           # Maniac Miner
+    type: effect
+    effect: minecraft:haste
+    max-level: 2
+    amplifiers: [0, 1]             # level 1 = Haste I, level 2 = Haste II
+    duration: -1                   # permanent while in the game
+    ambient: true
+    particles: false
+    icon: true
+  forge:                           # Iron / Gold / Emerald / Molten Forge (approx.)
+    type: forge
+    spawner-types: [iron, gold]
+    auto-discover-spawners-if-not-linked: true
+    auto-discover-max-distance: 25
+    emerald-spawner-type: emerald
+    tiers:
+      - resource-bonus: 0.5        # I   +50% iron/gold
+      - resource-bonus: 1.0        # II  +100%
+      - resource-bonus: 1.0        # III base generator also spawns emeralds
+        emerald-interval: 60       #     seconds (approx.)
+        emerald-amount: 1
+      - resource-bonus: 2.0        # IV  +200%
+        emerald-interval: 60
+        emerald-amount: 1
+  dragon-buff:                     # +1 ender dragon for the team in sudden death
+    type: dragon-buff
+    max-level: 1
+    extra-dragons-per-level: 1
+  healpool:                        # permanent base area effect (not a queued trap)
+    type: area-effect
     name: Healpool
     detection-range: 7
-    effects:
+    effects:                       # keep amplifier 1 + duration 30: refreshed every second (Regeneration I would never tick with this duration)
       - effect: minecraft:regeneration
         duration: 30
         amplifier: 1
     enemies: false
     team: true
     singular-use: false
-  blindtrap:
-    type: trap
-    name: Blindtrap
-    detection-range: 7
-    effects:
-      - effect: minecraft:regeneration
-        duration: 30
-        amplifier: 1
-    enemies: true
-    team: false
-    singular-use: true
-    message: "@in_game.trap.blind_trap_triggered.message"
-    team-title: "@in_game.trap.blind_trap_triggered.title"
-    team-subtitle: "@in_game.trap.blind_trap_triggered.subtitle"
-    trigger-sound:
-      name: entity.ender_dragon.growl
-      pitch: 1
+  # The former "blindtrap"/"minertrap" (blindtrap gave REGENERATION to intruders) are replaced by the trap queue below.
+
+# Hypixel-like trap queue (approx.): up to 3 traps, cost 1/2/4 diamonds, first queued trap fires when an enemy enters the base.
+trap-queue:
+  enabled: true
+  max-size: 3
+  currency: diamond
+  costs: [1, 2, 4]
+  cooldown-seconds: 15             # approx. / UNCERTAIN
+  detection-range: 10              # approx.
+  allow-duplicates: true
+  traps:
+    its-a-trap:
+      name: "@fork.in_game.traps.names.its_a_trap"
+      icon: tripwire_hook
+      enemy-effects:
+        - effect: minecraft:blindness
+          duration: 160            # 8 s (approx.)
+          amplifier: 0
+        - effect: minecraft:slowness
+          duration: 160
+          amplifier: 0
+    counter-offensive:
+      name: "@fork.in_game.traps.names.counter_offensive"
+      icon: feather
+      team-effect-range: 20
+      team-effects:
+        - effect: minecraft:speed
+          duration: 300            # 15 s (approx.)
+          amplifier: 1
+        - effect: minecraft:jump_boost
+          duration: 300
+          amplifier: 1
+    alarm:
+      name: "@fork.in_game.traps.names.alarm"
+      icon: redstone_torch
+      reveal-invisible: true
+      affect-all-intruders: true
+    miner-fatigue:
+      name: "@fork.in_game.traps.names.miner_fatigue"
+      icon: iron_pickaxe
+      enemy-effects:
+        - effect: minecraft:mining_fatigue
+          duration: 200            # 10 s (approx.)
+          amplifier: 0
+
+# Game timeline: generator tiers, bed destruction, sudden death, game end.
+# Times = elapsed RUNNING time ("m:ss"). All values are APPROXIMATE Hypixel values and can be changed freely.
+timeline:
+  enabled: true
+  announcements:
+    chat: true
+    title: true      # Hypixel itself only uses chat for generator upgrades; set false for that behaviour
+    sound:
+      name: block.note_block.pling
+      source: master
       volume: 1
-  minertrap:
-    type: trap
-    name: Minertrap
-    detection-range: 7
-    effects:
-      - effect: minecraft:mining_fatigue
-        duration: 200
-        amplifier: 2
-    enemies: true
-    team: false
-    singular-use: true
-    message: "@in_game.trap.miner_trap_triggered.message"
-    team-title: "@in_game.trap.miner_trap_triggered.title"
-    team-subtitle: "@in_game.trap.miner_trap_triggered.subtitle"
-    trigger-sound:
-      name: entity.ender_dragon.growl
       pitch: 1
-      volume: 1
+  spawner-tiers:
+    diamond:
+      1: 30 seconds
+      2: 23 seconds
+      3: 12 seconds
+    emerald:
+      1: 65 seconds   # custom-spawner-types.emerald.interval (60) is still used when the timeline is disabled
+      2: 50 seconds
+      3: 35 seconds
+  events:
+    - id: diamond-2
+      time: "6:00"
+      type: spawner-tier
+      spawner: diamond
+      tier: 2
+    - id: emerald-2
+      time: "12:00"
+      type: spawner-tier
+      spawner: emerald
+      tier: 2
+    - id: diamond-3
+      time: "18:00"
+      type: spawner-tier
+      spawner: diamond
+      tier: 3
+    - id: emerald-3
+      time: "24:00"
+      type: spawner-tier
+      spawner: emerald
+      tier: 3
+    - id: bed-destruction
+      time: "30:00"
+      type: bed-destruction
+    - id: sudden-death
+      time: "40:00"
+      type: sudden-death
+    - id: game-end
+      time: "50:00"
+      type: game-end
 
 prefabs:
   # Usage: /bw admin <arena> prefab upgrade-shop

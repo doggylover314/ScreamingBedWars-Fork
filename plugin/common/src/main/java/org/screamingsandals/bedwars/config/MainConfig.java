@@ -22,6 +22,7 @@ package org.screamingsandals.bedwars.config;
 import lombok.RequiredArgsConstructor;
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.NotNull;
+import org.screamingsandals.bedwars.game.mode.ModeDefaults;
 import org.screamingsandals.bedwars.utils.MiscUtils;
 import org.screamingsandals.lib.Server;
 import org.screamingsandals.lib.item.ItemStack;
@@ -70,6 +71,14 @@ public class MainConfig {
 
             var generator = new ConfigGenerator(loader, configurationNode);
 
+            // fork (built-in party): before the built-in system existed, party.enabled only toggled the hook into the
+            // removed Parties plugin (default false). Configs from that time have no party.max-size yet -> switch the
+            // built-in system on once. Admins can set party.enabled: false afterwards; this never runs again because
+            // party.max-size is written by the generator chain below.
+            if (!configurationNode.node("party").virtual() && configurationNode.node("party", "max-size").virtual()) {
+                configurationNode.node("party", "enabled").set(true);
+            }
+
             generator.start()
                 .key("locale").defValue("en")
                 .key("prefix").defValue("[BW]")
@@ -104,6 +113,7 @@ public class MainConfig {
                 .key("use-team-letter-prefixes-before-player-names").defValue(false)
                 .key("use-certain-popular-server-titles").defValue(false)
                 .key("show-game-info-on-start").defValue(false)
+                .key("timeline-enabled").defValue(true)
                 .section("tnt-jump")
                     .key("enabled").defValue(true)
                     .key("source-damage").defValue(0.5)
@@ -175,6 +185,35 @@ public class MainConfig {
                 .section("kick-players-upon-final-death")
                     .key("enabled").defValue(false)
                     .key("delay").defValue(5)
+                    .back()
+                .section("bed-destruction")
+                    .key("announce").defValue(true)
+                    .back()
+                .section("sudden-death")
+                    .key("enabled").defValue(true)
+                    .key("destroy-targets").defValue(true)
+                    .key("bossbar-message").defValue(true)
+                    .section("dragon")
+                        .key("per-team").defValue(1)
+                        .key("max-total").defValue(16)
+                        .key("speed").defValue(0.7)
+                        .key("turn-rate").defValue(6.0)
+                        .key("invulnerable").defValue(true)
+                        .key("damage-multiplier").defValue(1.0)
+                        .key("damage-own-team").defValue(false)
+                        .key("block-destruction").defValue("placed")
+                        .key("immune-blocks").defValue(() -> List.of("#beds", "#doors", "respawn_anchor", "cake", "ender_chest", "chest", "trapped_chest", "barrier", "bedrock"))
+                        .key("bounds-margin").defValue(4.0)
+                        .key("cruise-height").defValue(15.0)
+                        .key("show-name").defValue(true)
+                        .key("respawn-lost").defValue(true)
+                        .key("force-mob-griefing").defValue(false)
+                        .back()
+                    .back()
+                .section("game-end-by-time")
+                    .key("mode").defValue("draw")
+                    .key("tie-break").defValue(() -> List.of("target", "players"))
+                    .key("draw-counts-as-loss").defValue(false)
                     .back()
                 .section("commands")
                     .key("list").migrateOldAbsoluteKey("allowed-commands").defValue(List::of)
@@ -531,6 +570,15 @@ public class MainConfig {
                     .key("respawn_cooldown_done", "sound").migrateOld("on_respawn_cooldown_done").defValue("entity.player.levelup")
                     .key("respawn_cooldown_done", "volume").defValue(1)
                     .key("respawn_cooldown_done", "pitch").defValue(1)
+                    .key("bed_destruction", "sound").defValue("entity.ender_dragon.growl")
+                    .key("bed_destruction", "volume").defValue(1)
+                    .key("bed_destruction", "pitch").defValue(1)
+                    .key("sudden_death", "sound").defValue("entity.ender_dragon.growl")
+                    .key("sudden_death", "volume").defValue(1)
+                    .key("sudden_death", "pitch").defValue(0.8)
+                    .key("game_draw", "sound").defValue("block.beacon.deactivate")
+                    .key("game_draw", "volume").defValue(1)
+                    .key("game_draw", "pitch").defValue(1)
                     .back()
                 .section("game-effects")
                     .key("end").defValue(() -> Map.of(
@@ -697,6 +745,7 @@ public class MainConfig {
                     .key("team-win").defValue(() -> List.of("/example {team} 10"))
                     .key("player-team-win").defValue(() -> List.of("/example {team} {death} 10"))
                     .key("game-start").defValue(() -> List.of("/example Hello World!"))
+                    .key("player-game-draw").defValue(() -> List.of("/example {player} 5"))
                     .back()
                 .section("lore")
                     .key("generate-automatically").defValue(true)
@@ -886,6 +935,14 @@ public class MainConfig {
                             .migrateOldAbsoluteKey("default-permissions", "party")
                             .defValue(true)
                         .back()
+                    .section("party-join-bypass")
+                        .key("key").defValue("bw.party.join-bypass")
+                        .key("default").defValue(false)
+                        .back()
+                    .section("party-size-bypass")
+                        .key("key").defValue("bw.party.size-bypass")
+                        .key("default").defValue(false)
+                        .back()
                     .section("gamesinv")
                         .key("key").defValue("bw.cmd.gamesinv")
                         .key("default")
@@ -922,15 +979,139 @@ public class MainConfig {
                         .back()
                     .back()
                 .section("party")
-                    .key("enabled").defValue(false)
+                    .key("enabled").defValue(true)
                     .key("autojoin-members").defValue(true)
                     .key("notify-when-warped").defValue(true)
+                    .key("require-leader-to-join").defValue(true)
+                    .key("max-size").defValue(4)
+                    .key("members-can-invite").defValue(false)
+                    .key("invite-expire-seconds").defValue(60)
+                    .section("leader-offline")
+                        .key("grace-seconds").defValue(300)
+                        .key("action").defValue("transfer")
+                        .back()
+                    .key("member-offline-timeout-seconds").defValue(300)
+                    .section("join")
+                        .key("must-fit-one-team").defValue(true)
+                        .key("pull-from-running-games").defValue(false)
+                        .back()
+                    .section("warp")
+                        .key("enabled").defValue(true)
+                        .key("teleport-outside-games").defValue(true)
+                        .key("teleport-delay-ticks").defValue(5)
+                        .back()
+                    .section("chat")
+                        .key("enabled").defValue(true)
+                        .key("bypass-prefix").defValue("!")
+                        .key("log-to-console").defValue(true)
+                        .back()
+                    .section("commands")
+                        .key("root-command").defValue(true)
+                        .key("label").defValue("party")
+                        .key("aliases").defValue(() -> List.of("p"))
+                        .key("allow-in-game").defValue(true)
+                        .key("invite-shortcut").defValue(true)
+                        .back()
                     .back()
                 .section("floating-generator").key("enabled").defValue(true)
                     .key("holo-height").defValue(0.5)
                     .key("generator-height").defValue(0.25)
                     .back()
                 .drop("version");
+
+            // ===== fork feature defaults: one block or one call per feature area (append only) =====
+            // infra: bundled-file revisions (variants/certain-popular-server.yml, shop/certain-popular-server/upgrade-shop.yml)
+            generator.start()
+                .section("bundled-files")
+                    .key("auto-update").defValue(true)
+                    .key("backup").defValue(true)
+                    .back();
+
+            // upgrades and traps
+            generator.start()
+                .section("upgrades")
+                    .key("effect-refresh-seconds").defValue(3)
+                    .key("refresh-open-shops").defValue(true)
+                    .section("enchant-items")
+                        .key("on-buy").defValue(true)
+                        .key("on-pickup").defValue(true)
+                        .key("on-inventory-change").defValue(true)
+                        .back()
+                    .back()
+                .section("sounds")
+                    .key("trap_triggered", "sound").defValue("entity.ender_dragon.growl")
+                    .key("trap_triggered", "volume").defValue(1)
+                    .key("trap_triggered", "pitch").defValue(1)
+                    .back();
+
+            // party
+            generator.start()
+                .section("sounds")
+                    .key("party_invite", "sound").defValue("entity.experience_orb.pickup")
+                    .key("party_invite", "volume").defValue(1)
+                    .key("party_invite", "pitch").defValue(1)
+                    .back();
+
+            // modes
+            generator.start()
+                .section("modes")
+                    .key("enabled").defValue(true)
+                    .key("list").defValue(ModeDefaults::defaultModeList)
+                    .key("allowed-team-sizes").defValue(() -> List.of(1, 2, 3, 4)) // game-overridable
+                    .key("preferred-team-sizes").defValue(List::of)               // game-overridable
+                    .key("team-priority").defValue(List::of)                      // game-overridable
+                    .key("only-via-mode-selection").defValue(false)               // game-overridable
+                    .key("disable-team-selection").defValue(true)                 // game-overridable
+                    .key("keep-parties-together").defValue(true)                  // game-overridable
+                    .key("claim-timeout-seconds").defValue(10)
+                    .key("npc-hologram-refresh-seconds").defValue(2)
+                    .key("npc-hologram-template").defValue(() -> List.of(
+                            "<mode>",
+                            "<gray><mode-players> playing",
+                            "<yellow><bold>CLICK TO PLAY"))
+                    .key("npc-row-spacing").defValue(2.0)
+                    .section("queue")
+                        .key("enabled").defValue(false)
+                        .key("max-wait-seconds").defValue(300)
+                        .back()
+                    .back()
+                .section("permissions")
+                    .section("mode")
+                        .key("key").defValue("bw.cmd.mode")
+                        .key("default").defValue(true)
+                        .back()
+                    .back();
+
+            // easy arena setup and arena clone
+            generator.start()
+                .section("setup")
+                    .key("default-team-size").defValue(4)
+                    .key("snap-to-block-center").defValue(true)
+                    .key("show-next-step-hint").defValue(true)
+                    .key("team-generator-types").defValue(() -> List.of("iron", "gold"))
+                    .key("team-generator-hologram").defValue(true)
+                    .key("diamond-spawner-type").defValue("diamond")
+                    .key("emerald-spawner-type").defValue("emerald")
+                    .key("shop-file").defValue("")
+                    .key("upgrade-shop-file").defValue("")
+                    .back()
+                .section("clone")
+                    .key("blocks-per-tick").defValue(4096)
+                    .key("max-millis-per-tick").defValue(15)
+                    .key("max-blocks").defValue(20000000)
+                    .key("progress-interval-seconds").defValue(5)
+                    .key("require-confirmation").defValue(true)
+                    .key("confirmation-timeout-seconds").defValue(60)
+                    .key("copy-block-entities").defValue(true)
+                    .key("block-entities-per-tick").defValue(64)
+                    .key("block-entity-types").defValue(() -> List.of("#all_signs", "#signs", "#banners", "#shulker_boxes",
+                            "chest", "trapped_chest", "barrel", "furnace", "blast_furnace", "smoker", "hopper", "dropper",
+                            "dispenser", "brewing_stand", "lectern", "jukebox", "chiseled_bookshelf", "decorated_pot",
+                            "crafter", "player_head", "player_wall_head", "spawner", "beacon"))
+                    .key("copy-entities").defValue(true)
+                    .key("entity-types").defValue(() -> List.of("item_frame", "glow_item_frame", "painting", "armor_stand"))
+                    .key("skip-hologram-armor-stands").defValue(true)
+                    .back();
 
                  // @formatter:on
                 generator.saveIfModified();

@@ -22,11 +22,23 @@ subprojects {
         maven("https://repo.papermc.io/repository/maven-snapshots/")
         maven("https://repo.onarandombox.com/content/groups/public")
         maven("https://repo.codemc.org/repository/maven-public/")
-        maven("https://repo.alessiodp.com/releases/")
     }
 
     dependencies {
         "compileOnly"(rootProject.libs.jetbrains.annotations)
+
+        "testCompileOnly"(rootProject.libs.jetbrains.annotations)
+        "testImplementation"(platform(rootProject.libs.junit.bom))
+        "testImplementation"(rootProject.libs.junit.jupiter)
+        "testRuntimeOnly"(rootProject.libs.junit.platform.launcher)
+    }
+
+    tasks.withType<Test>().configureEach {
+        useJUnitPlatform()
+        testLogging {
+            events("failed", "skipped")
+            exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+        }
     }
 
     configureJavac(JavaVersion.VERSION_17)

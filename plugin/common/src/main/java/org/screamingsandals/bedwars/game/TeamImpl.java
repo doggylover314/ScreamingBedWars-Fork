@@ -23,6 +23,7 @@ import lombok.Data;
 import lombok.Getter;
 import lombok.Setter;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.screamingsandals.bedwars.api.Team;
 import org.screamingsandals.bedwars.api.config.GameConfigurationContainer;
 import org.screamingsandals.bedwars.api.game.target.Target;
@@ -65,6 +66,8 @@ public class TeamImpl extends UpgradableImpl implements Team {
     private Target target;
     private final List<Location> teamSpawns = new ArrayList<>();
     private int maxPlayers;
+    /** Runtime override set by an active mode (GameImpl#applyMode); never saved. */
+    private @Nullable Integer maxPlayersOverride;
     private GameImpl game;
 
     private Container teamChestInventory;
@@ -165,6 +168,17 @@ public class TeamImpl extends UpgradableImpl implements Team {
         resetUpgrades();
         this.traps.clear();
         this.started = true;
+    }
+
+    @Override
+    public int getMaxPlayers() {
+        var override = maxPlayersOverride;
+        return override != null ? override : maxPlayers;
+    }
+
+    /** Value stored in the arena file. */
+    public int getConfiguredMaxPlayers() {
+        return maxPlayers;
     }
 
     public void destroy() {

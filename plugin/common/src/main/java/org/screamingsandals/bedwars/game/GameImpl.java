@@ -48,6 +48,7 @@ import org.screamingsandals.bedwars.config.RecordSave;
 import org.screamingsandals.bedwars.utils.EconomyUtils;
 import org.screamingsandals.bedwars.entities.EntitiesManagerImpl;
 import org.screamingsandals.bedwars.events.*;
+import org.screamingsandals.bedwars.game.mode.ModeDefinition;
 import org.screamingsandals.bedwars.game.target.*;
 import org.screamingsandals.bedwars.inventories.TeamSelectorInventory;
 import org.screamingsandals.bedwars.lang.LangKeys;
@@ -175,6 +176,10 @@ public class GameImpl implements LocalGame {
     @Setter(AccessLevel.PROTECTED)
     private boolean preparing = false;
 
+    // ===== modes (C4): runtime only, never saved (foundation: field only; package P6 adds the rest) =====
+    @Setter(AccessLevel.NONE)
+    private volatile @Nullable ModeDefinition activeMode;
+
     public void removeEntity(Entity e) {
         if (ArenaUtils.isInArea(e.getLocation(), pos1, pos2)) {
             final var chunk = e.getLocation().getChunk();
@@ -232,6 +237,11 @@ public class GameImpl implements LocalGame {
 
     public boolean checkMinPlayers() {
         return players.size() >= getMinPlayers();
+    }
+
+    /** Value stored in the arena file (ignores an active mode). */
+    public int getConfiguredMinPlayers() {
+        return minPlayers;
     }
 
     public int countPlayers() {

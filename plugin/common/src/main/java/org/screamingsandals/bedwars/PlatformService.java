@@ -23,6 +23,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.screamingsandals.lib.block.BlockPlacement;
 import org.screamingsandals.lib.block.snapshot.BlockSnapshot;
+import org.screamingsandals.lib.entity.Entity;
 import org.screamingsandals.lib.event.player.PlayerBlockBreakEvent;
 import org.screamingsandals.lib.event.player.PlayerBlockPlaceEvent;
 import org.screamingsandals.lib.item.ItemStack;
@@ -52,4 +53,33 @@ public abstract class PlatformService {
     public abstract @Nullable Object savePlatformScoreboard(@NotNull Player player);
 
     public abstract void restorePlatformScoreboard(@NotNull Player player, @NotNull Object scoreboard);
+
+    /**
+     * Prepares a freshly spawned sudden death ender dragon so that only the plugin moves it
+     * (Bukkit: phase HOVER, vanilla boss bar hidden). Default: nothing; phase changes are cancelled by GameEndgameService anyway.
+     */
+    public void prepareSuddenDeathDragon(@NotNull Entity dragon) {
+    }
+
+    /**
+     * Copies the complete block entity (tile) data of source onto target (target already has the same block data).
+     */
+    public boolean copyBlockEntity(@NotNull BlockPlacement source, @NotNull BlockPlacement target) {
+        return false;
+    }
+
+    public boolean isBlockEntityCopySupported() {
+        return false;
+    }
+
+    /**
+     * Spawns a copy of the entity (all data) at the target location.
+     */
+    public boolean copyEntity(@NotNull Entity source, @NotNull Location target) {
+        return false;
+    }
+
+    public boolean isEntityCopySupported() {
+        return false;
+    }
 }

@@ -33,9 +33,11 @@ import org.screamingsandals.bedwars.config.GameConfigurationContainerImpl;
 import org.screamingsandals.bedwars.config.MainConfig;
 import org.screamingsandals.bedwars.config.RecordSave;
 import org.screamingsandals.bedwars.events.*;
+import org.screamingsandals.bedwars.game.endgame.GameEndgameService;
 import org.screamingsandals.bedwars.game.target.AExpirableTarget;
 import org.screamingsandals.bedwars.game.target.ExpirableTargetBlockImpl;
 import org.screamingsandals.bedwars.game.target.TargetBlockDestroyedInfo;
+import org.screamingsandals.bedwars.game.timeline.GameTimelineService;
 import org.screamingsandals.bedwars.holograms.StatisticsHolograms;
 import org.screamingsandals.bedwars.inventories.TeamSelectorInventory;
 import org.screamingsandals.bedwars.lang.LangKeys;
@@ -68,7 +70,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 @RequiredArgsConstructor
-// TODO: Add configurable game phases and support for phase insertions.
+// Configurable timed phases: see org.screamingsandals.bedwars.game.timeline (variant "timeline:" section).
 public class GameCycleImpl implements GameCycle {
     private final GameImpl game;
     /**
@@ -105,6 +107,10 @@ public class GameCycleImpl implements GameCycle {
             // Phase 5.1.1: Prepare game if next status is RUNNING
             if (tick.getNextStatus() == GameStatus.RUNNING) {
                 prepareGame(statusE, tick);
+            } else if (game.getStatus() == GameStatus.RUNNING && tick.getNextStatus() == GameStatus.GAME_END_CELEBRATING) {
+                // Phase 5.1.2: the arena time limit ran out (or an addon ended the game through GameTickEvent):
+                // announce a draw / tie-break winner instead of ending silently.
+                GameEndgameService.getInstance().endGameByTime(game, tick);
             }
             // Phase 5.2: If status is same as before
         } else {
@@ -117,6 +123,13 @@ public class GameCycleImpl implements GameCycle {
         // Phase 6: Update status and countdown for next tick
         game.setCountdown(tick.getNextCountdown());
         game.setStatus(tick.getNextStatus());
+
+        // Phase 6.5: Game timeline (generator tiers, bed destruction, sudden death, game end).
+        // Runs after the next status/countdown were committed, so timeline actions (e.g. GameEndgameService.endGameByTime)
+        // may change the game status/countdown directly without being overwritten by this cycle.
+        if (game.getPreviousStatus() == GameStatus.RUNNING && game.getStatus() == GameStatus.RUNNING) {
+            GameTimelineService.getInstance().tickRunning(game);
+        }
 
         // Phase 7: Check if game end celebrating started and remove title on boss-bar
         if (game.getStatus() == GameStatus.GAME_END_CELEBRATING && game.hasGameStatusChanged()) {
@@ -199,47 +212,58 @@ public class GameCycleImpl implements GameCycle {
                     return;
                 }
 
-                String time = GameImpl.getFormattedTimeLeft(remainingGameTime);
-                var message = Message
-                        .of(LangKeys.IN_GAME_END_TEAM_WIN)
-                        .prefixOrDefault(game.getCustomPrefixComponent())
-                        .placeholder("team", Component.text(winner.getName(), winner.getColor().getTextColor()))
-                        .placeholder("time", time);
-
-                boolean madeRecord = game.processRecord(winner, remainingGameTime);
-
-                for (BedWarsPlayer player : players) {
-                    player.sendMessage(message);
-
-                    if (game.getPlayerTeam(player) == winner) {
-                        handlePlayerWin(player, winner, time, madeRecord);
-                    } else {
-                        Message.of(LangKeys.IN_GAME_END_YOU_LOST)
-                                .join(LangKeys.IN_GAME_END_TEAM_WIN)
-                                .placeholder("team", Component.text(winner.getName(), winner.getColor().getTextColor()))
-                                .placeholder("time", time)
-                                .times(TitleUtils.defaultTimes())
-                                .title(player);
-
-                        if (StatisticsHolograms.isEnabled()) {
-                            StatisticsHolograms.getInstance().updateHolograms(player);
-                        }
-                    }
-                }
-
-                var endingEvent = new GameEndingEventImpl(game, winner);
-                EventManager.fire(endingEvent);
-
-                game.dispatchRewardCommands("team-win", null, 0, winner, null, null);
-                for (var member : winner.getTeamMembers()) {
-                    game.dispatchRewardCommands("player-team-win", null, 0, winner, winner.getPlayers().stream().anyMatch(p -> p.getUniqueId().equals(member.getUuid())), member);
-                }
+                announceWinner(winner, remainingGameTime, true);
             }
             EventManager.fire(statusE);
             Debug.info(game.getName() + ": game is ending");
 
             tick.setNextCountdown(game.getPostGameWaiting());
             tick.setNextStatus(GameStatus.GAME_END_CELEBRATING);
+        }
+    }
+
+    /**
+     * Announces {@code winner}: chat + titles, statistics, economy, record (if allowed), GameEndingEventImpl and reward commands.
+     * Does not change the game status. Used by the last-team-standing check and by GameEndgameService (time limit tie-break).
+     *
+     * @param elapsedGameTime seconds since the game started (shown as "won game in <time>")
+     */
+    public void announceWinner(@NotNull TeamImpl winner, int elapsedGameTime, boolean allowRecord) {
+        var players = List.copyOf(game.getPlayers());                          // CHANGED: iterate a copy
+        String time = GameImpl.getFormattedTimeLeft(elapsedGameTime);
+        var message = Message
+                .of(LangKeys.IN_GAME_END_TEAM_WIN)
+                .prefixOrDefault(game.getCustomPrefixComponent())
+                .placeholder("team", Component.text(winner.getName(), winner.getColor().getTextColor()))
+                .placeholder("time", time);
+
+        boolean madeRecord = allowRecord && game.processRecord(winner, elapsedGameTime);   // CHANGED: allowRecord
+
+        for (BedWarsPlayer player : players) {
+            player.sendMessage(message);
+
+            if (game.getPlayerTeam(player) == winner) {
+                handlePlayerWin(player, winner, time, madeRecord);
+            } else {
+                Message.of(LangKeys.IN_GAME_END_YOU_LOST)
+                        .join(LangKeys.IN_GAME_END_TEAM_WIN)
+                        .placeholder("team", Component.text(winner.getName(), winner.getColor().getTextColor()))
+                        .placeholder("time", time)
+                        .times(TitleUtils.defaultTimes())
+                        .title(player);
+
+                if (StatisticsHolograms.isEnabled()) {
+                    StatisticsHolograms.getInstance().updateHolograms(player);
+                }
+            }
+        }
+
+        var endingEvent = new GameEndingEventImpl(game, winner);
+        EventManager.fire(endingEvent);
+
+        game.dispatchRewardCommands("team-win", null, 0, winner, null, null);
+        for (var member : winner.getTeamMembers()) {
+            game.dispatchRewardCommands("player-team-win", null, 0, winner, winner.getPlayers().stream().anyMatch(p -> p.getUniqueId().equals(member.getUuid())), member);
         }
     }
 
@@ -421,8 +445,9 @@ public class GameCycleImpl implements GameCycle {
             tick.setNextStatus(GameStatus.WAITING);
             game.setPreparing(false);
         } else {
-            if (configurationContainer.getOrDefault(GameConfigurationContainer.JOIN_RANDOM_TEAM_AFTER_LOBBY, false)) {
-                game.makePlayersJoinRandomTeams();
+            if (game.getActiveMode() != null
+                    || configurationContainer.getOrDefault(GameConfigurationContainer.JOIN_RANDOM_TEAM_AFTER_LOBBY, false)) {
+                game.makePlayersJoinRandomTeams();   // mode games: always (TeamAssignment.assignModeTeams)
             }
 
             var statusbar = game.getStatusBar();
@@ -488,6 +513,8 @@ public class GameCycleImpl implements GameCycle {
             for (var team : game.getTeamsInGame()) {
                 team.start();
             }
+
+            GameTimelineService.getInstance().startGame(game);
 
             if (Server.isVersion(1, 15) && (!configurationContainer.getOrDefault(GameConfigurationContainer.ALLOW_FAKE_DEATH, false))) {
                 game.getWorld().setGameRuleValue(GameRuleType.of("immediate_respawn"), true);

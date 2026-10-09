@@ -30,6 +30,7 @@ import org.screamingsandals.bedwars.BedWarsPlugin;
 import org.screamingsandals.bedwars.api.variants.Variant;
 import org.screamingsandals.bedwars.config.GameConfigurationContainerImpl;
 import org.screamingsandals.bedwars.game.ItemSpawnerTypeImpl;
+import org.screamingsandals.bedwars.game.timeline.TimelineDefinition;
 import org.screamingsandals.bedwars.game.upgrade.builtin.BuiltInUpgradeDefinition;
 import org.screamingsandals.bedwars.variants.prefab.Prefab;
 
@@ -56,6 +57,8 @@ public class VariantImpl implements Variant {
     private final @NotNull Map<@NotNull String, Prefab> prefabMap = new HashMap<>();
     @Setter(AccessLevel.PROTECTED)
     private boolean defaultItemSpawnerTypesIncluded = true;
+    @Setter(AccessLevel.PROTECTED)
+    private @NotNull TimelineDefinition timeline = TimelineDefinition.EMPTY;
 
     @Override
     public @NotNull List<@NotNull ItemSpawnerTypeImpl> getItemSpawnerTypes() {

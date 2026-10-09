@@ -24,6 +24,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.screamingsandals.bedwars.BedWarsPlugin;
 import org.screamingsandals.bedwars.api.variants.VariantManager;
+import org.screamingsandals.bedwars.utils.BundledResourceUpdater;
 import org.screamingsandals.lib.plugin.ServiceManager;
 import org.screamingsandals.lib.utils.annotations.Service;
 import org.screamingsandals.lib.utils.annotations.methods.OnPostEnable;
@@ -87,6 +88,8 @@ public class VariantManagerImpl implements VariantManager {
                 logger.error("An error occurred while creating a folder {}", variantsFolder.toString(), e);
             }
         }
+
+        BundledResourceUpdater.updateOutdated(BedWarsPlugin.getInstance().getPluginDescription().dataFolder(), logger);
 
         // Copy files related to default variant if they don't exist
         if (!Files.exists(variantsFolder.resolve("default.yml"))) {

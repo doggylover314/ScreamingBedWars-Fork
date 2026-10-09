@@ -25,6 +25,7 @@ import cloud.commandframework.arguments.standard.BooleanArgument;
 import org.screamingsandals.bedwars.PlatformService;
 import org.screamingsandals.bedwars.config.MainConfig;
 import org.screamingsandals.bedwars.lang.BedWarsLangService;
+import org.screamingsandals.bedwars.lang.ForkLanguageLayering;
 import org.screamingsandals.bedwars.lang.LangKeys;
 import org.screamingsandals.lib.lang.Message;
 import org.screamingsandals.lib.sender.CommandSender;
@@ -71,6 +72,14 @@ public class LanguageCommand extends BaseCommand {
                                         var ins = LanguageCommand.class.getResourceAsStream("/" + file);
                                         if (ins != null) {
                                             Files.copy(ins, nFile);
+                                        }
+                                    }
+                                    var forkTarget = languageFolder.resolve("fork_" + nFile.getFileName());
+                                    if (!Files.exists(forkTarget)) {
+                                        try (var forkIns = LanguageCommand.class.getResourceAsStream("/" + ForkLanguageLayering.forkResourcePath(file))) {
+                                            if (forkIns != null) {
+                                                Files.copy(forkIns, forkTarget);
+                                            }
                                         }
                                     }
                                 }

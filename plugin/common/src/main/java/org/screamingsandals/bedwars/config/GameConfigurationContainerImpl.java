@@ -22,6 +22,9 @@ package org.screamingsandals.bedwars.config;
 import org.screamingsandals.bedwars.api.config.ConfigurationKey;
 import org.screamingsandals.bedwars.api.config.ConfigurationListKey;
 import org.screamingsandals.bedwars.api.config.GameConfigurationContainer;
+import org.screamingsandals.bedwars.game.mode.ModeConfigKeys;
+import org.screamingsandals.bedwars.party.PartyConfigKeys;
+import org.screamingsandals.bedwars.setup.SetupConfigKeys;
 import org.screamingsandals.lib.item.ItemStack;
 import org.screamingsandals.lib.spectator.bossbar.BossBarColor;
 import org.screamingsandals.lib.spectator.bossbar.BossBarDivision;
@@ -106,6 +109,7 @@ public class GameConfigurationContainerImpl extends ConfigurationContainerImpl i
         register(DISABLE_OPENING_STORES_OF_OTHER_TEAMS, "disable-opening-stores-of-other-teams");
         register(DISABLE_WATERLOGGING_OF_ORIGINAL_BLOCKS, "disable-waterlogging-of-original-blocks");
         register(SPAWN_RESOURCES_ON_GAME_START, "spawn-resources-on-game-start");
+        register(TIMELINE_ENABLED, "timeline-enabled");
         register(DEFAULT_SHOP_FILE);
         register(PREFIX, "prefix");
         register(ARENA_TIME);
@@ -136,9 +140,35 @@ public class GameConfigurationContainerImpl extends ConfigurationContainerImpl i
         register(STATISTICS_SCORES_LOSE, "statistics", "scores", "lose");
         register(STATISTICS_SCORES_RECORD, "statistics", "scores", "record");
         register(KICK_PLAYERS_UPON_FINAL_DEATH_ENABLED, "kick-players-upon-final-death", "enabled");
-        register(KICK_PLAYERS_UPON_FINAL_DEATH_ENABLED, "kick-players-upon-final-death", "delay");
+        register(KICK_PLAYERS_UPON_FINAL_DEATH_DELAY, "kick-players-upon-final-death", "delay");
         register(DESTROY_PLACED_BLOCKS_BY_EXPLOSION_ENABLED, "destroy-placed-blocks-by-explosion", "enabled");
         register(DESTROY_PLACED_BLOCKS_BY_EXPLOSION_BLACKLIST, "destroy-placed-blocks-by-explosion", "blacklist");
+        register(BED_DESTRUCTION_ANNOUNCE, "bed-destruction", "announce");
+        register(SUDDEN_DEATH_ENABLED, "sudden-death", "enabled");
+        register(SUDDEN_DEATH_DESTROY_TARGETS, "sudden-death", "destroy-targets");
+        register(SUDDEN_DEATH_BOSSBAR_MESSAGE, "sudden-death", "bossbar-message");
+        register(SUDDEN_DEATH_DRAGON_PER_TEAM, "sudden-death", "dragon", "per-team");
+        register(SUDDEN_DEATH_DRAGON_MAX_TOTAL, "sudden-death", "dragon", "max-total");
+        register(SUDDEN_DEATH_DRAGON_SPEED, "sudden-death", "dragon", "speed");
+        register(SUDDEN_DEATH_DRAGON_TURN_RATE, "sudden-death", "dragon", "turn-rate");
+        register(SUDDEN_DEATH_DRAGON_INVULNERABLE, "sudden-death", "dragon", "invulnerable");
+        register(SUDDEN_DEATH_DRAGON_DAMAGE_MULTIPLIER, "sudden-death", "dragon", "damage-multiplier");
+        register(SUDDEN_DEATH_DRAGON_DAMAGE_OWN_TEAM, "sudden-death", "dragon", "damage-own-team");
+        register(SUDDEN_DEATH_DRAGON_BLOCK_DESTRUCTION, "sudden-death", "dragon", "block-destruction");
+        register(SUDDEN_DEATH_DRAGON_IMMUNE_BLOCKS, "sudden-death", "dragon", "immune-blocks");
+        register(SUDDEN_DEATH_DRAGON_BOUNDS_MARGIN, "sudden-death", "dragon", "bounds-margin");
+        register(SUDDEN_DEATH_DRAGON_CRUISE_HEIGHT, "sudden-death", "dragon", "cruise-height");
+        register(SUDDEN_DEATH_DRAGON_SHOW_NAME, "sudden-death", "dragon", "show-name");
+        register(SUDDEN_DEATH_DRAGON_RESPAWN_LOST, "sudden-death", "dragon", "respawn-lost");
+        register(SUDDEN_DEATH_DRAGON_FORCE_MOB_GRIEFING, "sudden-death", "dragon", "force-mob-griefing");
+        register(GAME_END_BY_TIME_MODE, "game-end-by-time", "mode");
+        register(GAME_END_BY_TIME_TIE_BREAK, "game-end-by-time", "tie-break");
+        register(GAME_END_BY_TIME_DRAW_COUNTS_AS_LOSS, "game-end-by-time", "draw-counts-as-loss");
+
+        // ===== fork feature keys (complete; registered by the foundation) =====
+        PartyConfigKeys.register(this);
+        ModeConfigKeys.register(this);
+        SetupConfigKeys.register(this);
     }
 
     protected void migrateOld(ConfigurationNode configurationNode) {

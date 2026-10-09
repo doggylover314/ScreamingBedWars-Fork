@@ -44,6 +44,7 @@ import org.screamingsandals.bedwars.inventories.ShopInventory;
 import org.screamingsandals.bedwars.lang.BedWarsLangService;
 import org.screamingsandals.bedwars.lib.debug.Debug;
 import org.screamingsandals.bedwars.listener.*;
+import org.screamingsandals.bedwars.party.PartyManagerImpl;
 import org.screamingsandals.bedwars.placeholderapi.BedwarsExpansion;
 import org.screamingsandals.bedwars.player.BedWarsPlayer;
 import org.screamingsandals.bedwars.player.PlayerManagerImpl;
@@ -109,7 +110,6 @@ import java.util.stream.Collectors;
         "PerWorldInventory",
         "SlimeWorldManager",
         "My_Worlds",
-        "Parties",
         "ASPaperPlugin"
 })
 @Init(
@@ -133,7 +133,6 @@ import java.util.stream.Collectors;
                 DatabaseManager.class,
                 BedWarsSignService.class,
                 PlayerManagerImpl.class,
-                PartyListener.class,
                 EventUtilsImpl.class,
                 LobbyInvisibilityListener.class,
                 BedwarsExpansion.class,
@@ -157,7 +156,12 @@ import java.util.stream.Collectors;
         packages = {
                 "org.screamingsandals.bedwars.special",
                 "org.screamingsandals.bedwars.lobby",
-                "org.screamingsandals.bedwars.game.upgrade.builtin"
+                "org.screamingsandals.bedwars.game.upgrade.builtin",
+                "org.screamingsandals.bedwars.game.timeline",
+                "org.screamingsandals.bedwars.game.endgame",
+                "org.screamingsandals.bedwars.party",
+                "org.screamingsandals.bedwars.game.mode",
+                "org.screamingsandals.bedwars.setup"
         }
 )
 @RequiredArgsConstructor
@@ -229,6 +233,9 @@ public class BedWarsPlugin implements BedwarsAPI {
 
     public static boolean isCommandAllowedInGame(String commandPref) {
         if ("/bw".equals(commandPref) || "/bedwars".equals(commandPref)) {
+            return true;
+        }
+        if (PartyManagerImpl.getInstance().isPartyCommandAllowedInGame(commandPref)) { // fork: built-in party
             return true;
         }
         try {

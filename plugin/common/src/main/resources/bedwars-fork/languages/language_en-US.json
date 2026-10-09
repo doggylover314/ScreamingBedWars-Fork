@@ -1,0 +1,355 @@
+{
+  "fork": {
+    "common": {
+      "feature_disabled": "<red>This feature is disabled on this server."
+    },
+    "in_game": {
+      "timeline": {
+        "event": {
+          "spawner_tier": "<spawner> <tier>",
+          "bed_destruction": "Bed Gone",
+          "sudden_death": "Sudden Death",
+          "game_end": "Game End",
+          "announcement": "Event"
+        },
+        "sidebar": {
+          "next_event": "<white><event> in <green><time>",
+          "time_limit": "<white>Game End in <green><time>",
+          "none": "<gray>-",
+          "game_over": "<red>Game Over!"
+        },
+        "spawner_tier": {
+          "chat": "<spawner> <yellow>Generators have been upgraded to <red>Tier <tier><yellow>!",
+          "title": "<red>Tier <tier>",
+          "subtitle": "<spawner> <yellow>generators have been upgraded!"
+        },
+        "announcement": {
+          "chat": "<yellow><event>",
+          "title": "<yellow><event>"
+        }
+      },
+      "endgame": {
+        "bed_destruction": {
+          "title": {
+            "bed": "<red><bold>BED DESTRUCTION",
+            "anchor": "<red><bold>ANCHOR DESTRUCTION",
+            "cake": "<red><bold>CAKE DESTRUCTION",
+            "any": "<red><bold>TARGET DESTRUCTION"
+          },
+          "chat": "<title> <dark_gray>» <gray><description>"
+        },
+        "sudden_death": {
+          "title": "<red><bold>SUDDEN DEATH",
+          "subtitle": "<yellow>The dragons have been released!",
+          "chat": "<red><bold>SUDDEN DEATH</bold> <dark_gray>» <yellow><count> ender dragons have been released!",
+          "dragon_buff": "<light_purple>Dragon Buff <dark_gray>» <yellow>Your team has <green><count></green> dragons!",
+          "bossbar": "<red><bold>SUDDEN DEATH"
+        },
+        "dragon": {
+          "name": "<team><white>'s Dragon",
+          "name_neutral": "<dark_purple>Ender Dragon",
+          "slain": "<yellow>A dragon of team <team><yellow> has been slain!"
+        },
+        "draw": {
+          "title": "<yellow><bold>DRAW!",
+          "subtitle": "<gray>Time is up - nobody won!",
+          "chat": "<yellow><bold>GAME OVER</bold> <dark_gray>» <gray>Time is up! The game ended in a draw."
+        },
+        "tie_break": {
+          "chat": "<yellow><bold>GAME OVER</bold> <dark_gray>» <gray>Time is up! <team><gray> wins the tie-break: <reason>.",
+          "reason": {
+            "target": "their bed is still standing",
+            "players": "most players alive",
+            "kills": "most kills",
+            "final_kills": "most final kills"
+          }
+        }
+      },
+      "upgrades": {
+        "purchased": "<green><player> <gray>purchased <gold><upgrade><gray>!",
+        "purchased_tier": "<green><player> <gray>purchased <gold><upgrade> <tier><gray>!",
+        "trap_purchased": "<green><player> <gray>purchased <gold><trap> <dark_gray>(<queued>/<max> queued)",
+        "maxed": "<red>Your team already has the highest tier of <upgrade><red>!",
+        "trap_queue_full": "<red>Your team's trap queue is full! <gray>(<max>/<max>)",
+        "trap_already_queued": "<trap> <red>is already in your team's trap queue!",
+        "nothing_to_upgrade": "<red>There is nothing your team could upgrade with <upgrade><red>.",
+        "unavailable": "<upgrade> <red>is not available in this arena.",
+        "cancelled": "<red>The purchase of <upgrade> <red>was cancelled.",
+        "lore": {
+          "tier_owned": "<green>✔ Tier <tier>: <name><gray>, <price>",
+          "tier_next": "<yellow>➜ Tier <tier>: <name><gray>, <price>",
+          "tier_locked": "<gray>Tier <tier>: <name>, <price>",
+          "cost": "<gray>Cost: <price>",
+          "click_to_buy": "<yellow>Click to purchase!",
+          "maxed": "<green>Unlocked - highest tier reached!",
+          "cannot_afford": "<red>You don't have enough <currency><red>!",
+          "unavailable": "<red>Not available in this arena.",
+          "trap_queue": "<gray>Queued traps: <yellow><queued><gray>/<yellow><max>",
+          "trap_queue_full": "<red>Your trap queue is full!",
+          "trap_already_queued": "<red>Already queued!"
+        },
+        "trap_queue_slot": {
+          "empty_name": "<red>Trap #<slot>: No Trap!",
+          "empty_lore": [
+            "<gray>The first enemy to walk into your",
+            "<gray>base will trigger this trap!",
+            "",
+            "<gray>Purchasing a trap will queue it here.",
+            "<gray>Its cost scales with the number of",
+            "<gray>traps already queued.",
+            "",
+            "<gray>Next trap: <price>"
+          ],
+          "filled_name": "<green>Trap #<slot>: <trap>",
+          "filled_lore": [
+            "<gray>Triggers when an enemy enters",
+            "<gray>your base."
+          ]
+        }
+      },
+      "traps": {
+        "triggered_title": "<red><bold>TRAP TRIGGERED!",
+        "triggered_subtitle": "<yellow>Your <trap> <yellow>has been triggered!",
+        "triggered_team": "<red><bold>TRAP!</bold> <yellow>Your <trap> <yellow>has been triggered!",
+        "alarm_team": "<red><bold>ALARM!</bold> <player> <gray>(<intruder-team><gray>) <yellow>has entered your base!",
+        "triggered_intruder": "<yellow>You triggered <team><yellow>'s <trap><yellow>!",
+        "names": {
+          "its_a_trap": "It's a Trap!",
+          "counter_offensive": "Counter-Offensive Trap",
+          "alarm": "Alarm Trap",
+          "miner_fatigue": "Miner Fatigue Trap"
+        }
+      }
+    },
+    "party": {
+      "help": [
+        "<gold><bold>Party commands",
+        "<yellow><cmd> invite <arg_player> <gray>- invite a player to your party",
+        "<yellow><cmd> accept [player] <gray>- accept a party invite",
+        "<yellow><cmd> deny [player] <gray>- decline a party invite",
+        "<yellow><cmd> list <gray>- show the members of your party",
+        "<yellow><cmd> leave <gray>- leave your party",
+        "<yellow><cmd> chat [message] <gray>- talk to your party or toggle party chat",
+        "<yellow><cmd> warp <gray>- bring your party to you (leader)",
+        "<yellow><cmd> kick <arg_player> <gray>- remove a member (leader)",
+        "<yellow><cmd> transfer <arg_player> <gray>- make another member the leader (leader)",
+        "<yellow><cmd> disband <gray>- disband your party (leader)"
+      ],
+      "invite": {
+        "sent": "<yellow>You invited <player><yellow> to your party. They have <aqua><seconds></aqua> seconds to accept.",
+        "sent_others": "<inviter><yellow> invited <player><yellow> to the party. They have <aqua><seconds></aqua> seconds to accept.",
+        "received": "<inviter><yellow> invited you to join their party! You have <aqua><seconds></aqua> seconds to accept. <accept> <deny>",
+        "received_member": "<inviter><yellow> invited you to join <leader><yellow>'s party! You have <aqua><seconds></aqua> seconds to accept. <accept> <deny>",
+        "button_accept": "<green><bold>[ACCEPT]",
+        "button_accept_hover": "<green>Click to join the party",
+        "button_deny": "<red><bold>[DENY]",
+        "button_deny_hover": "<red>Click to decline the invite",
+        "expired_inviter": "<yellow>The party invite to <player><yellow> has expired.",
+        "expired_target": "<yellow>The party invite from <inviter><yellow> has expired.",
+        "denied_inviter": "<player><yellow> declined your party invite.",
+        "denied_target": "<yellow>You declined the party invite from <inviter><yellow>."
+      },
+      "member": {
+        "joined": "<player><yellow> joined the party.",
+        "joined_self": "<yellow>You joined <leader><yellow>'s party.",
+        "left": "<player><yellow> left the party.",
+        "left_self": "<yellow>You left the party.",
+        "kicked": "<player><yellow> was removed from the party by <actor><yellow>.",
+        "kicked_self": "<red>You were removed from the party by <actor><red>.",
+        "disconnected": "<player><yellow> disconnected. They have <aqua><time></aqua> to rejoin before they are removed from the party.",
+        "disconnected_no_timeout": "<player><yellow> disconnected.",
+        "reconnected": "<player><yellow> reconnected.",
+        "removed_offline": "<player><yellow> was removed from the party because they did not return in time."
+      },
+      "leader": {
+        "disconnected_transfer": "<yellow>The party leader <player><yellow> disconnected. They have <aqua><time></aqua> to rejoin before the leadership is passed on.",
+        "disconnected_disband": "<yellow>The party leader <player><yellow> disconnected. They have <aqua><time></aqua> to rejoin before the party is disbanded.",
+        "disconnected_no_timeout": "<yellow>The party leader <player><yellow> disconnected.",
+        "changed": "<player><yellow> is now the party leader.",
+        "transferred": "<old><yellow> made <player><yellow> the party leader.",
+        "transferred_offline": "<yellow>The party leader <old><yellow> did not return in time. <player><yellow> is now the party leader."
+      },
+      "disband": {
+        "by_leader": "<red>The party was disbanded by <player><red>.",
+        "empty": "<red>The party was disbanded because nobody else is in it.",
+        "leader_offline": "<red>The party was disbanded because the party leader <player><red> did not return in time.",
+        "leader_left": "<red>The party was disbanded because the party leader <player><red> left."
+      },
+      "list": {
+        "header": "<gold><bold>Party</bold> <gray>(<count>/<max>)",
+        "leader": "<yellow>Leader: <player>",
+        "members": "<yellow>Members: <players>",
+        "invites": "<yellow>Invited: <players>",
+        "entry_online": "<green><name>",
+        "entry_offline": "<red><name> <gray>(offline)",
+        "entry_in_game": "<green><name> <gray>(<arena>)",
+        "separator": "<gray>, ",
+        "none": "<gray>-",
+        "unlimited": "∞"
+      },
+      "chat": {
+        "format": "<blue>Party <dark_gray>» <sender><white>: <message>",
+        "toggled_on": "<green>Party chat mode enabled. Your chat messages now go to your party. Start a message with <gray><bypass></gray> to use the normal chat.",
+        "toggled_off": "<yellow>Party chat mode disabled.",
+        "toggled_off_no_party": "<yellow>You are no longer in a party, party chat mode was disabled."
+      },
+      "join": {
+        "only_leader": "<red>You are in <leader><red>'s party. Only the party leader can join games. Use <gray><cmd> leave</gray> to leave the party.",
+        "no_room": "<red>There is not enough room in <gray><arena></gray> for your party (<needed> needed, <free> free).",
+        "too_big_for_team": "<red>Your party (<size> players) does not fit into one team in <gray><arena></gray> (max <max> per team).",
+        "member_busy": "<yellow>Your party leader joined <gray><arena></gray>, but you are still playing. Join them later with <gray>/bw join <arena></gray>.",
+        "member_busy_leader": "<gray><player></gray><yellow> is still playing another game and was not moved.",
+        "member_failed": "<gray><player></gray><red> could not be moved to your game."
+      },
+      "warp": {
+        "game_started": "<red>Your game has already started, party members cannot be warped into it."
+      },
+      "error": {
+        "player_not_found": "<red>Player <gray><player></gray> is not online.",
+        "cannot_invite_self": "<red>You cannot invite yourself.",
+        "already_invited": "<gray><player></gray><red> has already been invited to your party.",
+        "target_in_party": "<gray><player></gray><red> is already in a party.",
+        "already_member": "<gray><player></gray><red> is already in your party.",
+        "already_in_party": "<red>You are already in a party. Leave it first with <gray><cmd> leave</gray>.",
+        "party_full": "<red>The party is full (<max> players).",
+        "no_invite": "<red>You don't have any pending party invites.",
+        "no_invite_from": "<red>You don't have a pending party invite from <gray><player></gray>.",
+        "not_a_member": "<gray><player></gray><red> is not in your party.",
+        "cannot_kick_self": "<red>You cannot kick yourself. Use <gray><cmd> leave</gray> or <gray><cmd> disband</gray>.",
+        "cannot_transfer_self": "<red>You are already the party leader.",
+        "target_offline": "<gray><player></gray><red> is offline."
+      }
+    },
+    "modes": {
+      "unknown_mode": "<red>Unknown mode <gray><mode></gray>.",
+      "no_arena_available": "<red>All arenas for <mode> <red>are busy right now. Please try again in a moment.",
+      "party_too_large": "<red>Your party has <yellow><size></yellow> online members, but <mode> <red>allows only <yellow><team-size></yellow> players per team.",
+      "party_leader_only": "<red>Only your party leader can choose a mode.",
+      "joining": "<green>Joining <mode> <green>on <yellow><arena></yellow>...",
+      "arena_mode_selection_only": "<red>Arena <gray><arena></gray> can only be joined through the mode selection.",
+      "team_selection_disabled": "<red>You cannot choose a team in <mode><red>. Teams are assigned when the game starts.",
+      "party_team_choice_leader_only": "<red>Only your party leader can choose the team for your party.",
+      "party_team_full": "<red>Team <team> <red>does not have room for your whole party (<yellow><needed></yellow> players).",
+      "party_split": "<yellow>Your party was too large for one team and has been split.",
+      "main_lobby_not_set": "<red>The BedWars lobby has not been set up yet. An admin can set it with <gray>/bw mainlobby set</gray>.",
+      "queue": {
+        "joined": "<green>All arenas for <mode> <green>are busy. You are in the queue at position <yellow><position></yellow>.",
+        "already": "<yellow>You are already in the queue for <mode> <yellow>(position <position>).",
+        "left": "<yellow>You left the queue for <mode><yellow>.",
+        "expired": "<red>No arena for <mode> <red>became free in time. You have been removed from the queue.",
+        "not_queued": "<red>You are not in a queue."
+      },
+      "list": {
+        "header": "<yellow>Available modes:",
+        "entry": "<gray>- <mode> <dark_gray>(<id>)</dark_gray><gray>: <green><players></green> playing, <aqua><arenas></aqua> open arena(s)"
+      },
+      "admin": {
+        "npc_spawned": "<green>Spawned <yellow><count></yellow> mode NPC(s).",
+        "no_modes": "<red>No mode matches that team count."
+      }
+    },
+    "setup": {
+      "usage": "<yellow>Usage: <gray>/bw setup \\<arena> [variant]</gray>, <gray>/bw setup status|save|variant|cancel|clone</gray>; then stand where something belongs and use <gray>/bw set \\<thing></gray>.",
+      "selected": "<green>You are setting up arena <gray><arena></gray> (variant <gray><variant></gray>). Use <gray>/bw set ...</gray> at your position; <gray>/bw setup status</gray> shows what is missing.",
+      "no_selection": "<red>You have no arena selected. Use <gray>/bw setup \\<arena> [variant]</gray> first.",
+      "not_in_edit": "<red>Arena <gray><arena></gray> is no longer in edit mode (saved, removed or plugin reloaded). Reopen it: <gray><command>",
+      "arena_has_players": "<red>Arena <gray><arena></gray> has <gray><count></gray> player(s) right now. Wait until it is empty or force edit mode: <gray><command>",
+      "invalid_name": "<red><gray><arena></gray> cannot be used as a new arena name (letters, digits, _ and - only, max 48 characters, no UUIDs or command words).",
+      "cancelled_new": "<yellow>The unsaved arena <gray><arena></gray> was discarded.",
+      "cancelled_reloaded": "<yellow>Your changes to <gray><arena></gray> were discarded; the arena was reloaded from its file.",
+      "cancel_reload_failed": "<red>Arena <gray><arena></gray> could not be reloaded from its file; it was restarted with its current state. See the console.",
+      "variant_changed": "<green>Variant of <gray><arena></gray> changed from <gray><old></gray> to <gray><new></gray>.",
+      "variant_unchanged": "<yellow>Arena <gray><arena></gray> already uses variant <gray><variant></gray>.",
+      "variant_unknown_spawner_type": "<yellow><count> spawner(s) use type <gray><type></gray>, which variant <gray><variant></gray> does not define. Change them with <gray>/bw admin <arena> spawner change-type</gray> or remove them.",
+      "save_blocked": "<red>Arena <gray><arena></gray> cannot be saved yet. Missing:",
+      "lobby_region_cleared": "<yellow>The lobby moved to another world, so lobbypos1/lobbypos2 were cleared. Set them again if you need them.",
+      "next_step": "<gray>Next: <white><item></white> - <gray><command>",
+      "all_required_done": "<green>All required steps are done. Save and start the arena: <gray><command>",
+      "click_to_suggest": "<aqua>Click to put <gray><command></gray> into your chat.",
+      "status": {
+        "header": "<gold>Setup of <gray><arena></gray> (variant <gray><variant></gray>): <green><done></green>/<total> required steps done",
+        "missing": "<red>✘ <item> <dark_gray>-</dark_gray> <gray><command>",
+        "recommended": "<yellow>! <item> <dark_gray>-</dark_gray> <gray><command>",
+        "optional": "<gray>○ <item> <dark_gray>-</dark_gray> <gray><command>",
+        "everything_done": "<green>✔ Everything is set up."
+      },
+      "item": {
+        "bounds": "Arena bounds (pos1 and pos2)",
+        "lobby": "Waiting lobby spawn",
+        "lobby_region": "Lobby region (lobbypos1 + lobbypos2, removed when the game starts)",
+        "spectator": "Spectator spawn",
+        "teams": "At least 2 teams (<count> so far)",
+        "team_spawn": "Team <team>: spawn",
+        "team_target": "Team <team>: bed",
+        "team_generator": "Team <team>: base generator",
+        "team_shop": "Team <team>: item shop",
+        "team_upgrades": "Team <team>: upgrade shop",
+        "spawners": "Resource spawners (<count>)",
+        "shops": "Item shops (<count>)",
+        "store_count": "Store count (<count>) should be a multiple of the team count",
+        "upgrade_shops": "Upgrade shops (<count>)",
+        "diamond": "Diamond generators (<count>)",
+        "emerald": "Emerald generators (<count>)"
+      },
+      "set": {
+        "team_color_used": "<red>Team <gray><team></gray> already uses colour <teamcolor><red>.",
+        "no_bed_found": "<red>No bed found. Stand on the bed or look at it (max 5 blocks) and try again.",
+        "no_target_block": "<red>Look at a block (max 5 blocks) or stand on it and try again.",
+        "generators_replaced": "<yellow>Removed <gray><count></gray> old generator spawner(s) of team <gray><team></gray>.",
+        "spawner_already_here": "<red>A <gray><type></gray> spawner already exists at this block.",
+        "upgrade_shop_file_missing": "<red>Variant <gray><variant></gray> has no upgrade shop file. Set <gray>setup.upgrade-shop-file</gray> in the variant config or use <gray>/bw admin <arena> store file set</gray>."
+      }
+    },
+    "clone": {
+      "preview": {
+        "header": "<gold>Clone <gray><source></gray> as <gray><target></gray>:",
+        "source": "<gray>From <white><world></white> <white><min></white> to <white><max></white> (<size>)",
+        "target": "<gray>To <white><world></white> <white><min></white> to <white><max></white>",
+        "blocks": "<gray>Blocks: <white><blocks></white> (at least <white><seconds></white> s)",
+        "lobby_moved": "<gray>The waiting lobby is inside the arena and moves with it.",
+        "lobby_region_copied": "<gray>The lobby region outside the arena is copied and moved too.",
+        "lobby_shared": "<yellow>The waiting lobby is outside the arena: the clone uses the SAME lobby spawn. Change it later with /bw setup <target> and /bw set lobby.",
+        "lobby_region_dropped": "<yellow>The clone gets no lobby region (lobbypos1/2), so the two arenas cannot remove each other's waiting lobby.",
+        "players_in_target": "<yellow><count> player(s) are inside the target area and may get stuck.",
+        "block_entities_limited": "<gray>This server can only copy chest contents and sign texts; banners, heads and similar keep their block but lose extra data.",
+        "limitations": "<gray>Not copied: biomes, join signs, groups and NPCs. <entities>",
+        "entities_copied": "Item frames, paintings and armor stands are copied.",
+        "entities_not_copied": "Entities (item frames, paintings, armor stands) are not copied on this server.",
+        "confirm": "<yellow>Every block in the target area will be overwritten. Confirm: <gray><command></gray> (expires in <seconds> s)"
+      },
+      "confirm_button": "<green>Click to start the clone",
+      "no_pending": "<red>There is no clone waiting for confirmation (or it expired). Run the clone command again.",
+      "started": "<green>Cloning <gray><source></gray> to <gray><target></gray> started (<blocks> blocks).",
+      "progress": "<gray>Cloning <source> → <target>: <white><percent>%</white> (<done>/<total> blocks), about <seconds> s left",
+      "phase_block_entities": "<gray>Blocks copied; now copying <count> chests, signs and other block data...",
+      "phase_entities": "<gray>Copying item frames, paintings and armor stands...",
+      "phase_name": {
+        "blocks": "copying blocks",
+        "block_entities": "copying block data",
+        "entities": "copying entities",
+        "finishing": "saving"
+      },
+      "finished": "<green>Arena <gray><target></gray> created and started (<blocks> blocks, <block_entities> block entities, <entities> entities, <seconds> s). Edit it: <gray><command>",
+      "failed": "<red>Cloning <source> → <target> failed: <reason>. Blocks already copied stay in the world; no arena was created.",
+      "failed_load": "<red>The blocks of <gray><target></gray> were copied but the arena could not be loaded; its file was renamed to <gray><file></gray>. See the console.",
+      "cancelled": "<yellow>Cloning of <gray><source></gray> cancelled at <percent>%. Blocks already copied stay in the world; no arena was created.",
+      "none_running": "<red>No clone is running.",
+      "status": "<gray>Clone <source> → <target>: <phase>, <percent>%",
+      "error": {
+        "name_taken": "<red>An arena called <gray><name></gray> already exists or is being created.",
+        "busy": "<red>Another clone is running (<source> → <target>, <percent>%). Wait or cancel it: <gray><command>",
+        "source_in_use": "<red>Arena <gray><arena></gray> is in use (<status>). Put it into edit mode first: <gray><command>",
+        "source_incomplete": "<red>Arena <gray><arena></gray> is not complete (<item>), so it cannot be cloned.",
+        "invalid_coordinate": "<red>Invalid coordinate <gray><value></gray>. Use a number, ~ or ~\\<offset>.",
+        "unknown_world": "<red>World <gray><world></gray> does not exist or is not loaded.",
+        "out_of_world": "<red>The target area (Y <range>) is outside the world height.",
+        "overlaps_arena": "<red>The target area overlaps arena <gray><arena></gray>.",
+        "overlaps_source": "<red>The target area overlaps the source arena.",
+        "overlaps_clone": "<red>The target area overlaps another clone in progress (<gray><arena></gray>).",
+        "same_place": "<red>The target is the same place as the source.",
+        "too_large": "<red>The arena has <blocks> blocks; the limit is <limit> (config clone.max-blocks).",
+        "join_locked": "<red>This arena is being cloned right now; try again in a moment."
+      }
+    }
+  }
+}

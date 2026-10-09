@@ -26,6 +26,7 @@ import org.screamingsandals.bedwars.commands.cheat.CheatAdminCommand;
 import org.screamingsandals.bedwars.commands.cheat.CheatConsoleCommand;
 import org.screamingsandals.bedwars.commands.migrate.MigrateBedWars1058Command;
 import org.screamingsandals.bedwars.commands.migrate.MigrateBedWarsRelCommand;
+import org.screamingsandals.bedwars.game.mode.ModeCommand;
 import org.screamingsandals.bedwars.lang.LangKeys;
 import org.screamingsandals.lib.cloud.CloudConstructor;
 import org.screamingsandals.lib.cloud.extras.MinecraftExceptionHandler;
@@ -66,7 +67,10 @@ import org.screamingsandals.lib.utils.annotations.methods.Provider;
         MigrateBedWars1058Command.class,
         GroupCommand.class,
         JoinGroupCommand.class,
-        RemoteAdminCommand.class
+        RemoteAdminCommand.class,
+        ModeCommand.class,
+        SetupCommand.class,
+        SetCommand.class
 })
 @UtilityClass
 public class CommandService {

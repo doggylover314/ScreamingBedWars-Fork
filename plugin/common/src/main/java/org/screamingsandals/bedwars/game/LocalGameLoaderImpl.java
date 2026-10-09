@@ -39,6 +39,7 @@ import org.screamingsandals.bedwars.utils.ConfigurateUtils;
 import org.screamingsandals.bedwars.utils.MiscUtils;
 import org.screamingsandals.bedwars.variants.VariantManagerImpl;
 import org.screamingsandals.lib.Server;
+import org.screamingsandals.lib.configurate.SLibSerializers;
 import org.screamingsandals.lib.entity.LivingEntity;
 import org.screamingsandals.lib.plugin.Plugins;
 import org.screamingsandals.lib.plugin.ServiceManager;
@@ -52,7 +53,10 @@ import org.screamingsandals.lib.utils.reflect.Reflect;
 import org.screamingsandals.lib.world.Worlds;
 import org.screamingsandals.lib.world.chunk.Chunk;
 import org.screamingsandals.lib.world.gamerule.GameRuleType;
+import org.spongepowered.configurate.BasicConfigurationNode;
+import org.spongepowered.configurate.ConfigurateException;
 import org.spongepowered.configurate.ConfigurationNode;
+import org.spongepowered.configurate.ConfigurationOptions;
 import org.spongepowered.configurate.serialize.SerializationException;
 
 import java.io.File;
@@ -471,6 +475,17 @@ public class LocalGameLoaderImpl implements LocalGameLoader {
         final var loader = ConfigurateUtils.getConfigurationLoaderForFile(file);
         var configMap = loader.createNode();
 
+        writeGameNode(game, configMap);
+
+        try {
+            loader.save(configMap);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    /** Writes everything the arena file stores. Single source of truth for saveGame AND the arena clone. */
+    public void writeGameNode(@NotNull GameImpl game, @NotNull ConfigurationNode configMap) throws SerializationException {
         configMap.node("uuid").set(game.getUuid());
         configMap.node("name").set(game.getName());
         configMap.node("pauseCountdown").set(game.getPauseCountdown());
@@ -481,13 +496,13 @@ public class LocalGameLoaderImpl implements LocalGameLoader {
         configMap.node("specSpawn").set(MiscUtils.writeLocationToString(game.getSpecSpawn()));
         configMap.node("lobbySpawn").set(MiscUtils.writeLocationToString(game.getLobbySpawn()));
         if (game.getLobbyPos1() != null) {
-            configMap.node("lobbyPos1", MiscUtils.writeLocationToString(game.getLobbyPos1()));
+            configMap.node("lobbyPos1").set(MiscUtils.writeLocationToString(game.getLobbyPos1()));
         }
         if (game.getLobbyPos2() != null) {
-            configMap.node("lobbyPos2", MiscUtils.writeLocationToString(game.getLobbyPos2()));
+            configMap.node("lobbyPos2").set(MiscUtils.writeLocationToString(game.getLobbyPos2()));
         }
         configMap.node("lobbySpawnWorld").set(game.getLobbySpawn().getWorld().getName());
-        configMap.node("minPlayers").set(game.getMinPlayers());
+        configMap.node("minPlayers").set(game.getConfiguredMinPlayers());
         configMap.node("postGameWaiting").set(game.getPostGameWaiting());
         configMap.node("game-display-name").set(game.getDisplayName());
         final var teams = game.getTeams();
@@ -496,7 +511,7 @@ public class LocalGameLoaderImpl implements LocalGameLoader {
                 var teamNode = configMap.node("teams", t.getName());
                 teamNode.node("isNewColor").set(true);
                 teamNode.node("color").set(t.getColor().name());
-                teamNode.node("maxPlayers").set(t.getMaxPlayers());
+                teamNode.node("maxPlayers").set(t.getConfiguredMaxPlayers());
                 if (t.getTarget() instanceof SerializableGameComponent) {
                     ((SerializableGameComponent) t.getTarget()).saveTo(teamNode.node("target"));
                 }
@@ -533,11 +548,30 @@ public class LocalGameLoaderImpl implements LocalGameLoader {
                 configMap.node("dynamicPauseCountdown", entry.getKey().toString()).set(entry.getValue());
             }
         }
+    }
 
-        try {
-            loader.save(configMap);
-        } catch (IOException e) {
-            e.printStackTrace();
+    /** In-memory serialization (no file touched); used by the arena clone. */
+    public @NotNull ConfigurationNode serializeGame(@NotNull GameImpl game) throws SerializationException {
+        var node = BasicConfigurationNode.root(ConfigurationOptions.defaults().serializers(SLibSerializers::makeSerializers));
+        writeGameNode(game, node);
+        return node;
+    }
+
+    /** Writes a NEW arena file arenas/<uuid>.json (refuses to overwrite) and returns it. */
+    public @NotNull File writeNewArenaFile(@NotNull UUID uuid, @NotNull ConfigurationNode node) throws ConfigurateException {
+        var dir = BedWarsPlugin.getInstance().getPluginDescription().dataFolder().resolve("arenas").toFile();
+        if (!dir.exists()) {
+            //noinspection ResultOfMethodCallIgnored
+            dir.mkdirs();
         }
+        var file = new File(dir, uuid + ".json");
+        if (file.exists()) {
+            throw new ConfigurateException("Arena file " + file.getName() + " already exists");
+        }
+        var loader = ConfigurateUtils.getConfigurationLoaderForFile(file);
+        var root = loader.createNode();
+        root.from(node);
+        loader.save(root);
+        return file;
     }
 }

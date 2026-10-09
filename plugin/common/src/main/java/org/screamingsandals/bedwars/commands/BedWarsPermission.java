@@ -42,7 +42,10 @@ public enum BedWarsPermission {
     DISABLE_ALL_JOIN_PERMISSION("disable-all-join"),
     START_ITEM_PERMISSION("start-item"),
     FORCE_JOIN_PERMISSION("force-join"),
-    BYPASS_FLIGHT_PERMISSION("bypass-flight");
+    BYPASS_FLIGHT_PERMISSION("bypass-flight"),
+    PARTY_JOIN_BYPASS_PERMISSION("party-join-bypass"),
+    PARTY_SIZE_BYPASS_PERMISSION("party-size-bypass"),
+    MODE_PERMISSION("mode");
 
     private final String permissionNodeKey;
 

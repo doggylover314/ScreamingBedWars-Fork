@@ -16,124 +16,262 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with Screaming BedWars. If not, see <https://www.gnu.org/licenses/>.
 #
+# fork-revision: 1
+#
+# Upgrade shop of the certain-popular-server variant (Hypixel-like). What each upgrade does is defined in
+# variants/certain-popular-server.yml ("upgrades:" and "trap-queue:").
+#  * Prices are APPROXIMATE Hypixel values: "prices" = Solo/Doubles; "prices-by-team-size" "3" = teams of 3+ players
+#    (3v3v3v3 / 4v4v4v4).
+#  * Every buyable item needs a "price:" - SimpleInventories only makes priced items clickable. For items with a "prices:"
+#    ladder or a "trap-queue" entity the real price is computed for the buyer's team; "price:" is the fallback.
+#  * "row" is 1-based, "column" is 0-based.
 
 data:
-  - stack: "IRON_CHESTPLATE;1;Protection;Click here to get more resistance to damage!"
-    column: 2
-    price: 4 of diamond
-    properties:
-      name: upgrade
-      entities:
-        - type: team
-          upgrade-name: protection
-
-  - stack: "IRON_SWORD;1;Sharpness;Kill players quicker!."
+  # ---------------- team upgrades ----------------
+  - row: 1
     column: 1
     price: 4 of diamond
+    stack:
+      type: IRON_SWORD
+      display-name: "§aSharpened Swords"
+      lore:
+        - "§7Your team permanently gains"
+        - "§7Sharpness I on all swords and axes!"
     properties:
       name: upgrade
+      notify-team: true
+      prices: [4 of diamond]
+      prices-by-team-size:
+        "3": [8 of diamond]
       entities:
         - type: team
           upgrade-name: sharpness
 
-  - stack: "GOLDEN_PICKAXE;1;Efficiency;Break Blocks quicker!."
-    price: 4 of diamond
-    column: 3
+  - row: 1
+    column: 2
+    price: 2 of diamond
+    stack:
+      type: IRON_CHESTPLATE
+      display-name: "§aReinforced Armor"
+      lore:
+        - "§7Your team permanently gains"
+        - "§7Protection on all armor pieces!"
     properties:
       name: upgrade
+      notify-team: true
+      prices: [2 of diamond, 4 of diamond, 8 of diamond, 16 of diamond]
+      prices-by-team-size:
+        "3": [5 of diamond, 10 of diamond, 20 of diamond, 30 of diamond]
+      tier-names: ["Protection I", "Protection II", "Protection III", "Protection IV"]
       entities:
         - type: team
-          upgrade-name: efficiency
+          upgrade-name: protection
 
-  - price: 4 of iron
+  - row: 1
+    column: 3
+    price: 2 of diamond
+    stack:
+      type: GOLDEN_PICKAXE
+      display-name: "§aManiac Miner"
+      lore:
+        - "§7All players on your team"
+        - "§7permanently gain Haste."
     properties:
       name: upgrade
+      notify-team: true
+      prices: [2 of diamond, 4 of diamond]
+      prices-by-team-size:
+        "3": [4 of diamond, 6 of diamond]
+      tier-names: ["Haste I", "Haste II"]
       entities:
-        - type: spawner
-          add-levels: 0.2
-          max-level: 2
-          spawner-type:
-            - iron
-            - gold
-          auto-discover-spawners-if-not-linked: true
+        - type: team
+          upgrade-name: haste
+
+  - row: 2
+    column: 1
+    price: 2 of diamond
     stack:
       type: FURNACE
-      amount: 1
-      display-name: "Forge Upgrade"
-
-  - stack: "BEACON;1;§bHeal Pool;§7Triggers a pool around the base that heals you!"
-    column: 5
-    row: 1
+      display-name: "§aForge"
+      lore:
+        - "§7Upgrade resource spawning"
+        - "§7on your island."
     properties:
       name: upgrade
+      notify-team: true
+      prices: [2 of diamond, 4 of diamond, 6 of diamond, 8 of diamond]
+      prices-by-team-size:
+        "3": [4 of diamond, 8 of diamond, 12 of diamond, 16 of diamond]
+      tier-names:
+        - "Iron Forge (+50% resources)"
+        - "Gold Forge (+100% resources)"
+        - "Emerald Forge (spawns emeralds)"
+        - "Molten Forge (+200% resources)"
+      entities:
+        - type: team
+          upgrade-name: forge
+
+  - row: 2
+    column: 2
+    price: 1 of diamond
+    stack:
+      type: BEACON
+      display-name: "§aHeal Pool"
+      lore:
+        - "§7Creates a Regeneration field"
+        - "§7around your base!"
+    properties:
+      name: upgrade
+      notify-team: true
+      prices: [1 of diamond]
+      prices-by-team-size:
+        "3": [3 of diamond]
       entities:
         - type: team
           upgrade-name: healpool
-    price: 8 of diamond
 
-  - stack: "LEATHER;1;TRAPS;TRAP YOUR ENEMY"
+  - row: 2
+    column: 3
+    price: 5 of diamond
+    stack:
+      type: DRAGON_EGG
+      display-name: "§aDragon Buff"
+      lore:
+        - "§7Your team will have an extra"
+        - "§7dragon during sudden death!"
+    properties:
+      name: upgrade
+      notify-team: true
+      prices: [5 of diamond]
+      entities:
+        - type: team
+          upgrade-name: dragon-buff
+
+  # ---------------- traps (queued; cost scales with the queue, see trap-queue.costs) ----------------
+  - row: 1
+    column: 5
+    price: 1 of diamond
+    stack:
+      type: TRIPWIRE_HOOK
+      display-name: "§aIt's a Trap!"
+      lore:
+        - "§7Inflicts Blindness and Slowness"
+        - "§7for 8 seconds."
+    properties:
+      name: upgrade
+      notify-team: true
+      entities:
+        - type: trap-queue
+          trap: its-a-trap
+
+  - row: 1
+    column: 6
+    price: 1 of diamond
+    stack:
+      type: FEATHER
+      display-name: "§aCounter-Offensive Trap"
+      lore:
+        - "§7Grants Speed II and Jump Boost II"
+        - "§7for 15 seconds to allied players"
+        - "§7near your base."
+    properties:
+      name: upgrade
+      notify-team: true
+      entities:
+        - type: trap-queue
+          trap: counter-offensive
+
+  - row: 1
     column: 7
-    items:
-      - price: 2 of diamond
-        skip: 1
-        properties:
-          name: upgrade
-          entities:
-            - type: team
-              upgrade-name: blindtrap
-        stack:
-          type: STRING
-          display-name: "§bBlindess trap"
-          lore:
-            - "§7Get informed when an enemy enters a 7 block radius of your base"
-            - "§7Blind the foe and gain an upper advantage!"
+    price: 1 of diamond
+    stack:
+      type: REDSTONE_TORCH
+      display-name: "§aAlarm Trap"
+      lore:
+        - "§7Reveals invisible players as"
+        - "§7well as their name and team."
+    properties:
+      name: upgrade
+      notify-team: true
+      entities:
+        - type: trap-queue
+          trap: alarm
 
-      - price: 2 of diamond
-        skip: 1
-        properties:
-          name: upgrade
-          entities:
-            - type: team
-              upgrade-name: minertrap
-        stack:
-          type: STRING
-          display-name: "§bMining Fatigue trap"
-          lore:
-            - "§7Get informed when an enemy enters a 7 block radius of your base"
-            - "§7Slow Down their mining and gain an advantage!"
+  - row: 2
+    column: 5
+    price: 1 of diamond
+    stack:
+      type: IRON_PICKAXE
+      display-name: "§aMiner Fatigue Trap"
+      lore:
+        - "§7Inflicts Mining Fatigue"
+        - "§7for 10 seconds."
+    properties:
+      name: upgrade
+      notify-team: true
+      entities:
+        - type: trap-queue
+          trap: miner-fatigue
 
-  - stack: "GRAY_STAINED_GLASS_PANE;1;*****"
-    row: 2
+  # ---------------- separator ----------------
+  - stack: "GRAY_STAINED_GLASS_PANE;1;§8Trap queue below"
+    row: 3
     column: 0
 
-  - stack: "GRAY_STAINED_GLASS_PANE;1;*****"
-    row: 2
+  - stack: "GRAY_STAINED_GLASS_PANE;1;§8Trap queue below"
+    row: 3
     column: 1
 
-  - stack: "GRAY_STAINED_GLASS_PANE;1;*****"
-    row: 2
+  - stack: "GRAY_STAINED_GLASS_PANE;1;§8Trap queue below"
+    row: 3
     column: 2
 
-  - stack: "GRAY_STAINED_GLASS_PANE;1;*****"
-    row: 2
+  - stack: "GRAY_STAINED_GLASS_PANE;1;§8Trap queue below"
+    row: 3
     column: 3
 
-  - stack: "GRAY_STAINED_GLASS_PANE;1;*****"
-    row: 2
+  - stack: "GRAY_STAINED_GLASS_PANE;1;§8Trap queue below"
+    row: 3
     column: 4
 
-  - stack: "GRAY_STAINED_GLASS_PANE;1;*****"
-    row: 2
+  - stack: "GRAY_STAINED_GLASS_PANE;1;§8Trap queue below"
+    row: 3
     column: 5
 
-  - stack: "GRAY_STAINED_GLASS_PANE;1;*****"
-    row: 2
+  - stack: "GRAY_STAINED_GLASS_PANE;1;§8Trap queue below"
+    row: 3
     column: 6
 
-  - stack: "GRAY_STAINED_GLASS_PANE;1;*****"
-    row: 2
+  - stack: "GRAY_STAINED_GLASS_PANE;1;§8Trap queue below"
+    row: 3
     column: 7
 
-  - stack: "GRAY_STAINED_GLASS_PANE;1;*****"
-    row: 2
+  - stack: "GRAY_STAINED_GLASS_PANE;1;§8Trap queue below"
+    row: 3
     column: 8
+
+  # ---------------- trap queue display (no price -> not buyable) ----------------
+  - row: 4
+    column: 3
+    stack:
+      type: LIGHT_GRAY_STAINED_GLASS
+      display-name: "§cTrap #1: No Trap!"
+    properties:
+      name: trap-queue-slot
+      slot: 1
+  - row: 4
+    column: 4
+    stack:
+      type: LIGHT_GRAY_STAINED_GLASS
+      display-name: "§cTrap #2: No Trap!"
+    properties:
+      name: trap-queue-slot
+      slot: 2
+  - row: 4
+    column: 5
+    stack:
+      type: LIGHT_GRAY_STAINED_GLASS
+      display-name: "§cTrap #3: No Trap!"
+    properties:
+      name: trap-queue-slot
+      slot: 3

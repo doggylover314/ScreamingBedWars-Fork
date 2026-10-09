@@ -194,4 +194,80 @@ public class BukkitPlatformService extends PlatformService {
             player.as(Player.class).setScoreboard((Scoreboard) scoreboard);
         }
     }
+
+    @Override
+    public void prepareSuddenDeathDragon(@NotNull org.screamingsandals.lib.entity.Entity dragon) {
+        var bukkitEntity = dragon.as(org.bukkit.entity.Entity.class);
+        if (!(bukkitEntity instanceof org.bukkit.entity.EnderDragon)) {
+            return;
+        }
+        var enderDragon = (org.bukkit.entity.EnderDragon) bukkitEntity;
+        try {
+            enderDragon.setPhase(org.bukkit.entity.EnderDragon.Phase.HOVER);   // 1.9+; fires EnderDragonChangePhaseEvent (HOVER is allowed)
+        } catch (Throwable ignored) {
+            // 1.8: no phases; the per-tick teleport still controls the dragon
+        }
+        try {
+            var bossBar = enderDragon.getBossBar();                            // only non-null when a DragonBattle owns it (End worlds)
+            if (bossBar != null) {
+                bossBar.setVisible(false);
+            }
+        } catch (Throwable ignored) {
+        }
+    }
+
+    // The compile API (1.16.5) has neither BlockState#copy(Location) nor Entity#copy(Location) (both are Paper API), so reflection is used.
+    private static final java.lang.reflect.@Nullable Method BLOCK_STATE_COPY = findMethod(BlockState.class, "copy", Location.class);
+    private static final java.lang.reflect.@Nullable Method ENTITY_COPY = findMethod(org.bukkit.entity.Entity.class, "copy", Location.class);
+
+    private static java.lang.reflect.@Nullable Method findMethod(Class<?> owner, String name, Class<?>... params) {
+        try {
+            return owner.getMethod(name, params);
+        } catch (NoSuchMethodException | SecurityException e) {
+            return null;
+        }
+    }
+
+    @Override
+    public boolean isBlockEntityCopySupported() {
+        return BLOCK_STATE_COPY != null;
+    }
+
+    @Override
+    public boolean copyBlockEntity(@NotNull BlockPlacement source, @NotNull BlockPlacement target) {
+        if (BLOCK_STATE_COPY == null) {
+            return false;
+        }
+        try {
+            var state = source.as(Block.class).getState();
+            if (!(state instanceof org.bukkit.block.TileState)) {
+                return false;
+            }
+            var copy = (BlockState) BLOCK_STATE_COPY.invoke(state, target.location().as(Location.class));
+            return copy.update(true, false);
+        } catch (Throwable t) {
+            return false;
+        }
+    }
+
+    @Override
+    public boolean isEntityCopySupported() {
+        return ENTITY_COPY != null;
+    }
+
+    @Override
+    public boolean copyEntity(@NotNull org.screamingsandals.lib.entity.Entity source, @NotNull org.screamingsandals.lib.world.Location target) {
+        if (ENTITY_COPY == null) {
+            return false;
+        }
+        try {
+            var entity = source.as(org.bukkit.entity.Entity.class);
+            if (entity instanceof Player) {
+                return false;
+            }
+            return ENTITY_COPY.invoke(entity, target.as(Location.class)) != null;
+        } catch (Throwable t) {
+            return false;
+        }
+    }
 }

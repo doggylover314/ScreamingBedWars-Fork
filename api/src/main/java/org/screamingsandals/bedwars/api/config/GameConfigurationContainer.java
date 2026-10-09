@@ -65,6 +65,7 @@ public interface GameConfigurationContainer extends ConfigurationContainer {
     ConfigurationKey<Boolean> DISABLE_OPENING_STORES_OF_OTHER_TEAMS = ConfigurationKey.of(Boolean.class, "disable-opening-stores-of-other-teams");
     ConfigurationKey<Boolean> DISABLE_WATERLOGGING_OF_ORIGINAL_BLOCKS = ConfigurationKey.of(Boolean.class, "disable-waterlogging-of-original-blocks");
     ConfigurationKey<Boolean> SPAWN_RESOURCES_ON_GAME_START = ConfigurationKey.of(Boolean.class, "spawn-resources-on-game-start");
+    ConfigurationKey<Boolean> TIMELINE_ENABLED = ConfigurationKey.of(Boolean.class, "timeline-enabled");
 
     ConfigurationKey<String> PREFIX = ConfigurationKey.of(String.class, "prefix");
     ConfigurationKey<String> DEFAULT_SHOP_FILE = ConfigurationKey.of(String.class, "default-shop-file");
@@ -140,4 +141,28 @@ public interface GameConfigurationContainer extends ConfigurationContainer {
 
     ConfigurationKey<Boolean> DESTROY_PLACED_BLOCKS_BY_EXPLOSION_ENABLED = ConfigurationKey.of(Boolean.class, "destroy-placed-blocks-by-explosion", "enabled");
     ConfigurationListKey<String> DESTROY_PLACED_BLOCKS_BY_EXPLOSION_BLACKLIST = ConfigurationListKey.of(String.class, "destroy-placed-blocks-by-explosion", "blacklist"); // Block predicates (block state, #tag or type[*])
+
+    ConfigurationKey<Boolean> BED_DESTRUCTION_ANNOUNCE = ConfigurationKey.of(Boolean.class, "bed-destruction", "announce");
+
+    ConfigurationKey<Boolean> SUDDEN_DEATH_ENABLED = ConfigurationKey.of(Boolean.class, "sudden-death", "enabled");
+    ConfigurationKey<Boolean> SUDDEN_DEATH_DESTROY_TARGETS = ConfigurationKey.of(Boolean.class, "sudden-death", "destroy-targets");
+    ConfigurationKey<Boolean> SUDDEN_DEATH_BOSSBAR_MESSAGE = ConfigurationKey.of(Boolean.class, "sudden-death", "bossbar-message");
+    ConfigurationKey<Integer> SUDDEN_DEATH_DRAGON_PER_TEAM = ConfigurationKey.of(Integer.class, "sudden-death", "dragon", "per-team");
+    ConfigurationKey<Integer> SUDDEN_DEATH_DRAGON_MAX_TOTAL = ConfigurationKey.of(Integer.class, "sudden-death", "dragon", "max-total");
+    ConfigurationKey<Double> SUDDEN_DEATH_DRAGON_SPEED = ConfigurationKey.of(Double.class, "sudden-death", "dragon", "speed");
+    ConfigurationKey<Double> SUDDEN_DEATH_DRAGON_TURN_RATE = ConfigurationKey.of(Double.class, "sudden-death", "dragon", "turn-rate");
+    ConfigurationKey<Boolean> SUDDEN_DEATH_DRAGON_INVULNERABLE = ConfigurationKey.of(Boolean.class, "sudden-death", "dragon", "invulnerable");
+    ConfigurationKey<Double> SUDDEN_DEATH_DRAGON_DAMAGE_MULTIPLIER = ConfigurationKey.of(Double.class, "sudden-death", "dragon", "damage-multiplier");
+    ConfigurationKey<Boolean> SUDDEN_DEATH_DRAGON_DAMAGE_OWN_TEAM = ConfigurationKey.of(Boolean.class, "sudden-death", "dragon", "damage-own-team");
+    ConfigurationKey<String> SUDDEN_DEATH_DRAGON_BLOCK_DESTRUCTION = ConfigurationKey.of(String.class, "sudden-death", "dragon", "block-destruction"); // all | placed | none
+    ConfigurationListKey<String> SUDDEN_DEATH_DRAGON_IMMUNE_BLOCKS = ConfigurationListKey.of(String.class, "sudden-death", "dragon", "immune-blocks"); // block types or #tags
+    ConfigurationKey<Double> SUDDEN_DEATH_DRAGON_BOUNDS_MARGIN = ConfigurationKey.of(Double.class, "sudden-death", "dragon", "bounds-margin");
+    ConfigurationKey<Double> SUDDEN_DEATH_DRAGON_CRUISE_HEIGHT = ConfigurationKey.of(Double.class, "sudden-death", "dragon", "cruise-height");
+    ConfigurationKey<Boolean> SUDDEN_DEATH_DRAGON_SHOW_NAME = ConfigurationKey.of(Boolean.class, "sudden-death", "dragon", "show-name");
+    ConfigurationKey<Boolean> SUDDEN_DEATH_DRAGON_RESPAWN_LOST = ConfigurationKey.of(Boolean.class, "sudden-death", "dragon", "respawn-lost");
+    ConfigurationKey<Boolean> SUDDEN_DEATH_DRAGON_FORCE_MOB_GRIEFING = ConfigurationKey.of(Boolean.class, "sudden-death", "dragon", "force-mob-griefing");
+
+    ConfigurationKey<String> GAME_END_BY_TIME_MODE = ConfigurationKey.of(String.class, "game-end-by-time", "mode"); // draw | tie-break
+    ConfigurationListKey<String> GAME_END_BY_TIME_TIE_BREAK = ConfigurationListKey.of(String.class, "game-end-by-time", "tie-break"); // target, players, kills, final-kills
+    ConfigurationKey<Boolean> GAME_END_BY_TIME_DRAW_COUNTS_AS_LOSS = ConfigurationKey.of(Boolean.class, "game-end-by-time", "draw-counts-as-loss");
 }

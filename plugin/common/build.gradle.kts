@@ -6,7 +6,6 @@ dependencies {
     /* PROVIDED */
     compileOnly(libs.multiverse)
     compileOnly(libs.multiverse5.core)
-    compileOnly(libs.parties.api)
 
     /* SHADED */
     api("org.screamingsandals.language.bedwars:BedWarsLanguage:${Regex("^\\d+\\.\\d+").find(project.version.toString())?.value}-SNAPSHOT")
@@ -20,6 +19,11 @@ dependencies {
     }
     api(libs.configurate.yaml)
     api(project(":BedWars-protocol"))
+
+    /* TEST */
+    // configurate-gson is declared with exclude(group="*", module="*") because servers provide Gson;
+    // tests that load JSON (language overlay) need it explicitly.
+    testRuntimeOnly(libs.gson)
 }
 
 buildConfig {

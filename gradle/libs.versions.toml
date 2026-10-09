@@ -9,7 +9,6 @@ hikari = "5.0.0"
 # compileOnly libraries
 # version of paper does not matter, we barely use the api here, we only have to choose one compatible with Java 11
 paper = "1.16.5-R0.1-SNAPSHOT"
-parties-api = "3.2.6"
 perworldinventory-old = "1.11.5"
 perworldinventory-kt = "2.3.1"
 multiverse = "4.0.0"
@@ -26,6 +25,10 @@ configurate-patched-gson = "4.1.2-sandals-patch"
 
 mclogs-api = "5.0.2"
 
+# test libraries
+junit = "5.13.4"
+gson = "2.13.2"
+
 [libraries]
 # shaded libraries
 # screaming-lib and simple-inventories are handled by plugin
@@ -35,7 +38,6 @@ bstats = { group = "org.bstats", name = "bstats-bukkit", version.ref = "bstats" 
 
 # compileOnly libraries
 paper = { group = "com.destroystokyo.paper", name = "paper-api", version.ref = "paper"}
-parties-api = { group = "com.alessiodp.parties", name = "parties-api", version.ref = "parties-api" }
 perworldinventory-old = { group = "me.gnat008", name = "perworldinventory", version.ref = "perworldinventory-old" }
 perworldinventory-kt = { group = "me.ebonjaeger", name = "perworldinventory-kt", version.ref = "perworldinventory-kt" }
 multiverse = { group = "com.onarandombox.multiversecore", name = "Multiverse-Core", version.ref = "multiverse" }
@@ -44,6 +46,12 @@ configurate-gson = { group = "org.spongepowered", name = "configurate-gson", ver
 configurate-yaml = { group = "org.spongepowered", name = "configurate-yaml", version.ref = "configurate" }
 jetbrains-annotations = { group = "org.jetbrains", name = "annotations", version.ref = "jetbrains-annotations" }
 mclogs-api = { group = "gs.mclo", name = "api", version.ref = "mclogs-api" }
+
+# test libraries
+junit-bom = { group = "org.junit", name = "junit-bom", version.ref = "junit" }
+junit-jupiter = { group = "org.junit.jupiter", name = "junit-jupiter" }
+junit-platform-launcher = { group = "org.junit.platform", name = "junit-platform-launcher" }
+gson = { group = "com.google.code.gson", name = "gson", version.ref = "gson" }
 
 [plugins]
 screaming-plugin-builder = { id = "org.screamingsandals.plugin-builder", version.ref = "screaming-plugin-builder" }
