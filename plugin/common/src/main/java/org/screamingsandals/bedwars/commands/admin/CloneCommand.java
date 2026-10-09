@@ -21,11 +21,16 @@ package org.screamingsandals.bedwars.commands.admin;
 
 import cloud.commandframework.Command;
 import cloud.commandframework.CommandManager;
+import org.screamingsandals.bedwars.lang.LangKeys;
+import org.screamingsandals.bedwars.setup.clone.CloneCommandSupport;
+import org.screamingsandals.lib.lang.Message;
 import org.screamingsandals.lib.sender.CommandSender;
 import org.screamingsandals.lib.utils.annotations.Service;
 
 /**
- * FOUNDATION-SKELETON: replaced by package P9 (PLAN.md).
+ * {@code /bw admin <arena> clone <new-name> <x> <y> <z> [world]} and {@code ... clone confirm|cancel|status}:
+ * copies an arena (blocks, block entities, entities and every stored location) to another place, see
+ * {@link org.screamingsandals.bedwars.setup.clone.ArenaCloneService}.
  */
 @Service
 public class CloneCommand extends BaseAdminSubCommand {
@@ -35,5 +40,14 @@ public class CloneCommand extends BaseAdminSubCommand {
 
     @Override
     public void construct(CommandManager<CommandSender> manager, Command.Builder<CommandSender> commandSenderWrapperBuilder) {
+        CloneCommandSupport.register(manager, commandSenderWrapperBuilder,
+                (ctx, player) -> {
+                    var game = viewMode(ctx); // arena in edit mode or a registered local arena
+                    if (game == null) {
+                        Message.of(LangKeys.IN_GAME_ERRORS_GAME_NOT_FOUND).defaultPrefix().send(player);
+                    }
+                    return game;
+                },
+                ctx -> "/bw admin " + ctx.<String>get("game") + " clone confirm");
     }
 }
