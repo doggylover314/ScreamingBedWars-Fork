@@ -43,6 +43,7 @@ import org.screamingsandals.bedwars.game.target.TargetBlockImpl;
 import org.screamingsandals.bedwars.game.timeline.GameTimelineService;
 import org.screamingsandals.bedwars.game.upgrade.builtin.DragonBuffUpgradeDefinition;
 import org.screamingsandals.bedwars.holograms.StatisticsHolograms;
+import org.screamingsandals.bedwars.inventories.upgrade.UpgradeShopRefresher;
 import org.screamingsandals.bedwars.lang.ForkLangKeys;
 import org.screamingsandals.bedwars.lang.LangKeys;
 import org.screamingsandals.bedwars.lib.debug.Debug;
@@ -244,6 +245,8 @@ public class GameEndgameService {
         }
 
         var alive = game.getTeamsAlive();
+        rt.dragonBuffLocked = true; // from now on a Dragon Buff would change nothing, whether or not dragons spawn
+        alive.forEach(team -> UpgradeShopRefresher.refreshTeam(team, null)); // open shops must not offer it any more
         if (alive.size() < 2) {
             Debug.info(game.getName() + ": sudden death skipped, less than two teams alive");
             return;
@@ -253,7 +256,6 @@ public class GameEndgameService {
         for (int i = 0; i < alive.size(); i++) {
             requested[i] = settings.dragonsPerTeam() + Math.max(0, DragonBuffUpgradeDefinition.getExtraDragons(alive.get(i))); // C2
         }
-        rt.dragonBuffLocked = true; // the levels were read: a Dragon Buff bought from now on would change nothing
         int[] allocated = DragonAllocation.allocate(requested, settings.dragonMaxTotal());
         int total = Arrays.stream(allocated).sum();
         if (total <= 0) { // dragons-per-team 0 and no Dragon Buff: no session, watchdog, game rule change or announcement
@@ -330,11 +332,13 @@ public class GameEndgameService {
     }
 
     /**
-     * @return true once sudden death of this run has read the Dragon Buff levels (the dragon counts are fixed)
+     * @return true when a Dragon Buff can no longer change anything: sudden death of this run already fixed the dragon
+     * counts, or the arena has sudden death disabled
      */
     public boolean isDragonBuffLocked(@NotNull GameImpl game) {
         var rt = runtimes.get(game.getUuid());
-        return rt != null && rt.dragonBuffLocked;
+        return (rt != null && rt.dragonBuffLocked)
+                || !game.getConfigurationContainer().getOrDefault(GameConfigurationContainer.SUDDEN_DEATH_ENABLED, true);
     }
 
     public boolean isManagedDragon(@Nullable Entity entity) {
