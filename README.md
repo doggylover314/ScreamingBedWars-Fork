@@ -1,43 +1,166 @@
-# Screaming BedWars
-[![Build and publish BedWars master](https://github.com/ScreamingSandals/BedWars/actions/workflows/build-master.yml/badge.svg)](https://github.com/ScreamingSandals/BedWars/actions/workflows/build-master.yml)
-[![Codacy Badge](https://app.codacy.com/project/badge/Grade/2b72901b108f4577a135faee054d0d6d)](https://www.codacy.com/gh/ScreamingSandals/BedWars/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=ScreamingSandals/BedWars&amp;utm_campaign=Badge_Grade)
-[![Translation status](http://weblate.screamingsandals.org/widgets/bedwars/-/0-3-x/svg-badge.svg)](https://github.com/ScreamingSandals/BedWarsLanguage/tree/0.3.x)
-[![Discord](https://img.shields.io/discord/582271436845219842?logo=discord)](https://discord.gg/4xB54Ts)
-[![Spigot](https://img.shields.io/spiget/downloads/63714)](https://www.spigotmc.org/resources/screaming-bedwars-1-9-4-1-17-1.63714/)
+# Screaming BedWars (fork)
 
-**If you are using version 0.2.x (which you probably are), you are probably looking for the [ver/0.2.x](https://github.com/ScreamingSandals/BedWars/tree/ver/0.2.x) branch instead. This version of readme does NOT apply to 0.2.x!**
-
-A highly flexible BedWars plugin with wide Minecraft version support, originally inspired by BedwarsRel.
-
-Supported versions: \[1.8.8 - 26.3\]. Recommended version: \[26.1.2\]
-
-## Support
-If you need any help, you can contact us on [Discord](https://discord.gg/4xB54Ts). Please make sure to look into older messages. There are many question already answered. It is really anoying to repeat the same thing over and over.
-
-Make sure to check out our [Docs](https://docs.screamingsandals.org) before contacting us on Discord. It will save our time, you know. O:)
-
-If you have found any bug, feel free to report it into [Issues](https://github.com/ScreamingSandals/BedWars/issues), we will look into it.
+BedWars plugin for Minecraft 1.8.8 to 26.3, packaged as one jar. Based on [ScreamingSandals BedWars](https://github.com/ScreamingSandals/BedWars), originally inspired by BedwarsRel.
 
 ## Features
--   All the basics of BedWars game (Beds, Teams and so on)
--   Other BedWars variants: CakeWars/EggWars/AnchorWars
--   Shop that supports multi-shop per arena!
--   BungeeCord
--   Vault rewards
--   Spectator mode (now, spectators can join running game!)
--   Arena rebuilding (Incredibly quick!)
--   BossBar or XP bar in lobby countdown or with game time
--   Breakable (those are refreshing after arena rebuild) / ignored blocks
--   SpecialItems (RescuePlatform, TNTSheep and so on) - they can be configured in shop too!
--   and many other features
 
-### Customizable
--   Team selecting GUI
--   Auto coloring items (like armor and so)
--   Resource Spawners (you can have as much as you want)
--   Player statistics
--   In fact everything is customizable
--   And many more useful features.
+- Core BedWars game with beds, teams and spectators.
+- Other variants: CakeWars, EggWars and AnchorWars.
+- Shops, with several shops per arena.
+- BungeeCord support.
+- Vault rewards.
+- Spectators can join running games.
+- Fast arena rebuilding.
+- BossBar or XP bar for the lobby countdown or game time.
+- Breakable blocks that refresh after a rebuild, and ignored blocks.
+- Special items such as RescuePlatform and TNTSheep, also sold in shops.
+- Selection GUI for teams.
+- Automatic coloring of items such as armor.
+- Resource spawners, in any number.
+- Player statistics.
+- Most behavior is configurable.
+
+## Fork additions
+
+- Generator tiers and a game timeline: Diamond and Emerald II and III, bed destruction, sudden death and game end.
+- Sudden death with ender dragons, one per team still alive.
+- A draw result when the time limit ends.
+- Team upgrades: Sharpness, Protection, Haste, Iron Forge tiers, Heal Pool and Dragon Buff, with a price for each tier.
+- A trap queue with It's a Trap, Counter-Offensive, Alarm and Miner Fatigue.
+- Built-in parties with `/party` commands.
+- Game sizes picked at lobby NPCs, with team sizes filled automatically.
+- Short setup commands: `/bw setup` and `/bw set`.
+- Arena cloning with `/bw admin <arena> clone` and `/bw setup clone`.
+
+The Hypixel-style behavior ships in the bundled `certain-popular-server` variant. The timings and prices are configurable.
+
+## Setting up a server
+
+1. Build or pick the maps. Each arena has 2, 3 or 4 teams.
+2. Create each arena with `/bw setup <arena> certain-popular-server`. This variant adds the timeline, upgrades and traps.
+3. Set the arena at your position with `/bw set`:
+    - `pos1` and `pos2` at opposite corners of the arena.
+    - `lobby` and `spectator`.
+    - `team <color>`, then `spawn <team>` and `bed <team>` (stand on or look at the bed).
+    - `generator <team>`, `shop <team>` and `upgrades <team>`.
+    - `diamond` and `emerald` for the resource spawners.
+
+    `/bw setup status` shows what is still missing.
+4. Save with `/bw setup save` once the required steps are done.
+5. Use `/bw mainlobby set` to mark the BedWars lobby, then run `/bw mainlobby enable` so players return there after a game.
+6. Stand at the hub spot, run `/bw npc add`, then `/bw npc action TELEPORT_TO_LOBBY`. Clicking the NPC sends players to the lobby.
+7. In the lobby, run `/bw npc spawnmodes`. It spawns one NPC per game size.
+8. Players click a size NPC. They join a waiting arena of that size, or an idle arena with the same number of teams is claimed. Team sizes are set automatically.
+
+## Command reference
+
+### Setup
+
+| Command | What it does |
+|---|---|
+| `/bw setup` | Shows the selected arena and what is still missing. |
+| `/bw setup <arena> [variant]` | Creates or opens an arena for setup and selects it. |
+| `/bw setup status` | Shows the setup checklist of the selected arena. |
+| `/bw setup variant <variant>` | Changes the variant of the selected arena. |
+| `/bw setup save` | Saves the arena once all required steps are done. |
+| `/bw setup save force` | Saves the arena and skips the warnings. |
+| `/bw setup cancel` | Discards unsaved changes. A new arena that was never saved is dropped. |
+| `/bw setup clone <new-name> <x> <y> <z> [world]` | Copies the selected arena to a new position. Start it with `clone confirm`. |
+| `/bw setup clone confirm` | Starts the pending clone. |
+| `/bw setup clone cancel` | Cancels the pending clone. |
+| `/bw setup clone status` | Shows the state of the current clone. |
+| `/bw set pos1` | Sets the first corner of the arena at your position. |
+| `/bw set pos1 force` | Sets the first corner and skips the overlap check. |
+| `/bw set pos2` | Sets the opposite corner of the arena at your position. |
+| `/bw set pos2 force` | Sets the opposite corner and skips the overlap check. |
+| `/bw set lobby` | Sets the waiting spawn for players. |
+| `/bw set lobbypos1` | Sets one corner of the lobby region. |
+| `/bw set lobbypos2` | Sets the other corner of the lobby region. |
+| `/bw set spectator` | Sets the spectator spawn. `/bw set spec` works too. |
+| `/bw set team <color> [size]` | Adds a team of that color. Without a size, `setup.default-team-size` applies. |
+| `/bw set spawn <team>` | Sets the spawn of a team at your position. |
+| `/bw set bed <team>` | Sets the bed of a team. Stand on it or look at it. |
+| `/bw set target <team>` | Sets a non-bed target block of a team, the block you look at. |
+| `/bw set generator <team>` | Places the team generators here and replaces the older ones. |
+| `/bw set generator <team> add` | Places the team generators here and keeps the older ones. |
+| `/bw set diamond` | Places a diamond spawner at your position. |
+| `/bw set emerald` | Places an emerald spawner at your position. |
+| `/bw set shop [team]` | Places a shop at your position, optionally for a team. |
+| `/bw set upgrades [team]` | Places the upgrade shop at your position, optionally for a team. |
+
+### Arenas
+
+| Command | What it does |
+|---|---|
+| `/bw admin <arena> clone <new-name> <x> <y> <z> [world]` | Copies the arena to a new position. Each coordinate is a number, `~`, or `~<n>` relative to your block. |
+| `/bw admin <arena> clone confirm` | Starts the pending clone. |
+| `/bw admin <arena> clone cancel` | Cancels the pending clone. |
+| `/bw admin <arena> clone status` | Shows the state of the current clone. |
+| `/bw admin <arena> variant <variant>` | Changes the variant of an arena that is open for setup. |
+
+### Lobby and NPCs
+
+| Command | What it does |
+|---|---|
+| `/bw mainlobby set` | Sets the main lobby to your position. |
+| `/bw mainlobby enable` | Players return to the main lobby after a game. |
+| `/bw npc add` | Places an NPC at your position and selects it for editing. |
+| `/bw npc select` | Selects an existing NPC by clicking it. |
+| `/bw npc quit` | Stops editing the selected NPC. |
+| `/bw npc remove` | Removes the selected NPC. |
+| `/bw npc action TELEPORT_TO_LOBBY` | On click, teleports the player to the main lobby. |
+| `/bw npc action JOIN_MODE <mode>` | On click, joins a game size, such as `4v4v4v4`. |
+| `/bw npc action <action> [value]` | Sets what a click does. Other actions: `JOIN_GAME`, `JOIN_GROUP`, `JOIN_VARIANT`, `JOIN_RANDOM`, `OPEN_GAMES_INVENTORY`, `PLAYER_COMMAND`, `CONSOLE_COMMAND`, `DUMMY`. |
+| `/bw npc spawnmodes [team-count] [spacing]` | Spawns one `JOIN_MODE` NPC per game size, in a row from your position. A team count limits the sizes. |
+| `/bw npc shouldLookAtPlayer <value>` | Sets whether the selected NPC turns toward players. |
+| `/bw npc skin <skin>` | Sets the skin of the selected NPC. |
+| `/bw npc hologram addline <line>` | Adds a hologram line to the selected NPC. |
+| `/bw npc hologram setline <number> <line>` | Changes one hologram line of the selected NPC. |
+| `/bw npc hologram remove <number>` | Removes one hologram line of the selected NPC. |
+| `/bw npc hologram clear` | Removes all hologram lines of the selected NPC. |
+
+### Game sizes
+
+| Command | What it does |
+|---|---|
+| `/bw mode list` | Lists the game sizes with player and arena counts. |
+| `/bw mode join <mode>` | Joins a game size, such as `2v2`. |
+| `/bw mode leavequeue` | Leaves the queue for a game size. |
+
+### Parties
+
+| Command | What it does |
+|---|---|
+| `/party` | Shows the party help. |
+| `/party help` | Shows the party help. |
+| `/party invite <player>` | Invites an online player. |
+| `/party <player>` | Same as `/party invite <player>`, when `party.commands.invite-shortcut` is on. |
+| `/party accept [player]` | Accepts an invite, optionally from a named player. |
+| `/party deny [player]` | Declines an invite, optionally from a named player. |
+| `/party leave` | Leaves your party. |
+| `/party kick <player>` | Removes a member. `/party remove <player>` works too. |
+| `/party disband` | Disbands the party. |
+| `/party list` | Shows the members. `members` and `info` work too. |
+| `/party chat <message>` | Sends one message to party chat. |
+| `/party chat` | Toggles party chat on and off. |
+| `/party transfer <player>` | Gives leadership to a member. `promote` works too. |
+| `/party warp` | Leader only. Pulls members into your waiting game, or teleports them to you outside games. |
+
+`/p` works as an alias of `/party` (`party.commands.aliases`). All party commands also run under `/bw party`.
+
+## Configuration
+
+- `timeline:` in a variant file (`variants/<name>.yml`): spawner tier intervals and event times.
+- `modes.list`: game sizes, each with an id, team count, team size and minimum players.
+- `modes.allowed-team-sizes`: team sizes an arena accepts for game sizes (default `1` to `4`).
+- `modes.only-via-mode-selection`: when `true`, players join an arena only through game-size NPCs and `/bw mode join`.
+- `party.max-size`: largest party size (default `4`).
+- `party.invite-expire-seconds`: how long a party invite stays valid (default `60`).
+- `sudden-death.dragon.block-destruction`: blocks dragons can break: `all`, `placed` (default) or `none`.
+- `game-end-by-time.mode`: result when the time limit ends, `draw` (default) or `tie-break`.
+- `bundled-files.auto-update`: replaces outdated bundled variant and shop files on start (default `true`).
+- `setup.default-team-size`: team size for `/bw set team` without a size (default `4`).
+- `clone.blocks-per-tick`: blocks copied per tick when cloning an arena (default `4096`).
 
 ## Compiling
 
@@ -53,7 +176,11 @@ On Windows, use:
 gradlew.bat clean build
 ```
 
-The compiled JAR file will be located in the `plugin/{platform}/build/libs` directory (e.g. `plugin/bukkit/build/libs`).
+The compiled JAR file is located in `plugin/universal/build/libs`.
+
+## Upstream
+
+This fork is based on [ScreamingSandals BedWars](https://github.com/ScreamingSandals/BedWars). The upstream [Discord](https://discord.gg/4xB54Ts) and [docs](https://docs.screamingsandals.org) cover the upstream project, not this fork.
 
 ## License
 
