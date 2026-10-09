@@ -48,7 +48,10 @@ import org.spongepowered.configurate.gson.GsonConfigurationLoader;
 import org.spongepowered.configurate.serialize.SerializationException;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Set;
 
 @Service
 @ServiceDependencies(dependsOn = {
@@ -68,6 +71,8 @@ public class NPCManager {
     private final List<BedWarsNPC> npcs = new ArrayList<>();
 
     private Task hologramRefreshTask;
+    // NPCs whose hologram refresh already failed once; logged only the first time to avoid log spam every refresh tick
+    private final Set<BedWarsNPC> failedHologramRefreshes = Collections.newSetFromMap(new IdentityHashMap<>());
 
     public static NPCManager getInstance() {
         return ServiceManager.get(NPCManager.class);
@@ -105,12 +110,15 @@ public class NPCManager {
             try {
                 NpcHologramPlaceholders.refresh(npc);
             } catch (Throwable t) {
-                logger.warn("Could not refresh the hologram of an NPC", t);
+                if (failedHologramRefreshes.add(npc)) {
+                    logger.warn("Could not refresh the hologram of an NPC", t);
+                }
             }
         }
     }
 
     private void cancelHologramRefresh() {
+        failedHologramRefreshes.clear();
         if (hologramRefreshTask != null) {
             if (hologramRefreshTask.isScheduledOrRunning()) {
                 hologramRefreshTask.cancel();
