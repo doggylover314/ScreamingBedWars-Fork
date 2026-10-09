@@ -257,6 +257,11 @@ public class GameEndgameService {
                 session.spawnDragon(alive.get(i), points.get(point++), 0);
             }
         }
+        if (session.size() == 0) { // per-team 0 without Dragon Buff, or every spawn failed: nothing to announce or watch
+            stopSuddenDeath(game);
+            Debug.warn(game.getName() + ": sudden death started without dragons", true);
+            return;
+        }
         session.startWatchdog();
         Debug.info(game.getName() + ": sudden death started with " + session.size() + " dragon(s)");
         announceSuddenDeath(game, settings, alive, requested, allocated, session.size());
@@ -333,14 +338,15 @@ public class GameEndgameService {
             var world = session.game.getWorld();
             var rule = GameRuleType.of("mob_griefing");
             var override = mobGriefing.computeIfAbsent(world.getName(), name -> new MobGriefingOverride());
-            if (override.refs++ == 0) {
+            boolean first = override.refs++ == 0;
+            session.mobGriefingAcquired = true; // the reference is taken: release must give it back even if the world calls throw
+            if (first) {
                 Object previous = world.getGameRuleValue(rule);
                 override.previous = previous;
                 if (!Boolean.TRUE.equals(previous)) {
                     world.setGameRuleValue(rule, true);
                 }
             }
-            session.mobGriefingAcquired = true;
         } catch (Throwable t) {
             Debug.warn("Could not change mob_griefing: " + t, true); // game rule API differences on very old versions
         }
@@ -534,7 +540,7 @@ public class GameEndgameService {
 
     @OnEvent
     public void onEntityDamage(@NotNull EntityDamageEvent event) {
-        if (event.cancelled()) {
+        if (dragons.isEmpty() || event.cancelled()) { // fast path: no sudden death is running anywhere
             return;
         }
         var victimDragon = dragons.get(event.entity().getUniqueId());
