@@ -17,10 +17,23 @@
  * along with Screaming BedWars. If not, see <https://www.gnu.org/licenses/>.
  */
 
-@Init(services = {
-        ModeManager.class,
-        ModeJoinService.class
-})
 package org.screamingsandals.bedwars.game.mode;
 
-import org.screamingsandals.lib.utils.annotations.Init;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
+/**
+ * Result of the mode arena selection.
+ */
+public record SelectionResult(@NotNull Outcome outcome, @Nullable String arenaId) {
+    public enum Outcome {
+        /** Join a lobby that already runs the mode. */
+        JOIN_EXISTING,
+        /** Claim an idle arena for the mode. */
+        CLAIM_IDLE,
+        /** Nothing is available right now. */
+        NONE_AVAILABLE,
+        /** The party does not fit into one team of the mode. */
+        PARTY_TOO_LARGE
+    }
+}

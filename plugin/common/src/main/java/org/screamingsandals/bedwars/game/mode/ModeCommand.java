@@ -23,11 +23,16 @@ import cloud.commandframework.Command;
 import cloud.commandframework.CommandManager;
 import org.screamingsandals.bedwars.commands.BaseCommand;
 import org.screamingsandals.bedwars.commands.BedWarsPermission;
+import org.screamingsandals.bedwars.lang.ForkLangKeys;
+import org.screamingsandals.lib.lang.Message;
+import org.screamingsandals.lib.player.Player;
 import org.screamingsandals.lib.sender.CommandSender;
+import org.screamingsandals.lib.tasker.DefaultThreads;
+import org.screamingsandals.lib.tasker.Tasker;
 import org.screamingsandals.lib.utils.annotations.Service;
 
 /**
- * FOUNDATION-SKELETON: replaced by package P6 (PLAN.md).
+ * {@code /bw mode list|join|leavequeue}.
  */
 @Service
 public class ModeCommand extends BaseCommand {
@@ -37,5 +42,30 @@ public class ModeCommand extends BaseCommand {
 
     @Override
     protected void construct(Command.Builder<CommandSender> builder, CommandManager<CommandSender> manager) {
+        manager.command(builder.literal("list").handler(ctx -> {
+            var player = ctx.getSender().as(Player.class);
+            player.sendMessage(Message.of(ForkLangKeys.MODES_LIST_HEADER).defaultPrefix());
+            for (var mode : ModeManager.getInstance().getModes()) {
+                var stats = ModeManager.getInstance().getStats(mode);
+                player.sendMessage(Message.of(ForkLangKeys.MODES_LIST_ENTRY)
+                        .placeholder("mode", ModeManager.displayNameComponent(mode))
+                        .placeholderRaw("id", mode.id())
+                        .placeholder("players", stats.players())
+                        .placeholder("arenas", stats.joinableArenas()));
+            }
+        }));
+        manager.command(builder.literal("join")
+                .argument(manager.argumentBuilder(String.class, "mode")
+                        .withSuggestionsProvider((c, s) -> ModeManager.getInstance().getModeIds()))
+                .handler(ctx -> {
+                    var player = ctx.getSender().as(Player.class);
+                    String modeId = ctx.get("mode");
+                    Tasker.run(DefaultThreads.GLOBAL_THREAD, () -> ModeJoinService.getInstance().joinMode(player, modeId));
+                }));
+        manager.command(builder.literal("leavequeue")
+                .handler(ctx -> {
+                    var player = ctx.getSender().as(Player.class);
+                    Tasker.run(DefaultThreads.GLOBAL_THREAD, () -> ModeJoinService.getInstance().leaveQueue(player));
+                }));
     }
 }

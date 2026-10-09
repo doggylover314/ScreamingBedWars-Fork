@@ -66,15 +66,14 @@ public class GameSidebar {
                     .map(message -> Message.ofRichText(message)
                             .placeholder("game", game.getDisplayNameComponent())
                             .placeholder("players", () -> Component.text(game.countConnectedPlayers()))
-                            .placeholder("max-players", game.getMaxPlayers())
+                            .placeholder("max-players", () -> Component.text(game.getMaxPlayers()))
                             .placeholder("time", () -> Component.text(game.getTimeLeft()))
                             .placeholder("time-formatted", () -> Component.text(game.getFormattedTimeLeft()))
                             .placeholder("version", VersionInfo.VERSION)
                             .placeholder("date", MiscUtils.getFormattedDate(game.getConfigurationContainer().getOrDefault(GameConfigurationContainer.SIDEBAR_DATE_FORMAT, "date-format")))
-                            .placeholder("mode", checkMode())
+                            .placeholder("mode", sender -> checkMode().asComponent(sender))
                             .placeholder("state", sender -> {
-                                if (game.countConnectedPlayers() >= game.getMinPlayers() && (game.countActiveTeams() > 1
-                                        || game.getConfigurationContainer().getOrDefault(GameConfigurationContainer.JOIN_RANDOM_TEAM_AFTER_LOBBY, false))) {
+                                if (game.isStartConditionsMet()) {
                                     var seconds = game.getTimeLeft();
                                     return Message.of(LangKeys.IN_GAME_SCOREBOARD_STATE_COUNTDOWN)
                                             .placeholder("countdown", seconds)
@@ -165,11 +164,11 @@ public class GameSidebar {
                 Message.ofRichText(line)
                         .placeholder("game", game.getDisplayNameComponent())
                         .placeholder("players", () -> Component.text(game.countConnectedPlayers()))
-                        .placeholder("max-players", game.getMaxPlayers())
+                        .placeholder("max-players", () -> Component.text(game.getMaxPlayers()))
                         .placeholder("time", () -> Component.text(game.getFormattedTimeLeft()))
                         .placeholder("version", VersionInfo.VERSION)
                         .placeholder("date", MiscUtils.getFormattedDate(game.getConfigurationContainer().getOrDefault(GameConfigurationContainer.SIDEBAR_DATE_FORMAT, "date-format")))
-                        .placeholder("mode", checkMode())
+                        .placeholder("mode", sender -> checkMode().asComponent(sender))
                         .placeholder("tier", sender -> GameTimelineService.getInstance().renderSidebarTier(game, sender))
                         .placeholder("kills", sender -> Component.text(GameTimelineService.getInstance().getKills(game, sender)))
                         .placeholder("final-kills", sender -> Component.text(GameTimelineService.getInstance().getFinalKills(game, sender)))
@@ -317,6 +316,10 @@ public class GameSidebar {
     }
 
     public Message checkMode() {
+        var activeMode = game.getActiveMode();
+        if (activeMode != null) {
+            return Message.ofRichText(activeMode.displayName());
+        }
         if (game.getAvailableTeams().stream().allMatch(t -> t.getMaxPlayers() == 1)) {
             return Message.of(LangKeys.IN_GAME_SCOREBOARD_MODE_SOLO);
         } else if (game.getAvailableTeams().stream().allMatch(t -> t.getMaxPlayers() == 2)) {

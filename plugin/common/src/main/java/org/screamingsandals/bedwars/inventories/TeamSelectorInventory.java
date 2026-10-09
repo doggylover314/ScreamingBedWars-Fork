@@ -26,6 +26,8 @@ import org.screamingsandals.bedwars.events.PlayerJoinedTeamEventImpl;
 import org.screamingsandals.bedwars.events.PlayerLeaveEventImpl;
 import org.screamingsandals.bedwars.game.GameImpl;
 import org.screamingsandals.bedwars.game.TeamImpl;
+import org.screamingsandals.bedwars.game.mode.ModeManager;
+import org.screamingsandals.bedwars.lang.ForkLangKeys;
 import org.screamingsandals.bedwars.lang.LangKeys;
 import org.screamingsandals.bedwars.player.BedWarsPlayer;
 import org.screamingsandals.bedwars.player.PlayerManagerImpl;
@@ -116,6 +118,13 @@ public class TeamSelectorInventory {
     }
 
     public void openForPlayer(BedWarsPlayer player) {
+        if (!game.isTeamSelectionAllowed()) {
+            Message.of(ForkLangKeys.MODES_TEAM_SELECTION_DISABLED)
+                    .prefixOrDefault(game.getCustomPrefixComponent())
+                    .placeholder("mode", ModeManager.displayNameComponent(game.getActiveMode()))
+                    .send(player);
+            return;
+        }
         var event = new OpenTeamSelectionEventImpl(this.game, player);
         EventManager.fire(event);
 
