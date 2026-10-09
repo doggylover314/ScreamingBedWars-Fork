@@ -54,6 +54,14 @@ public class GameSidebar {
     private ScoreSidebar scoreboard;
     private TeamedSidebar<?> teamedSidebar = sidebar;
     private final Task task;
+    /**
+     * Update runs on an async task, viewers are added/removed and the sidebar is destroyed on the game thread. The slib
+     * sidebar sends its update packets for a copy of the viewers and does not re-check that a viewer is still there, so an
+     * update that was already running could send score packets after the objective of a leaving player was destroyed.
+     * This lock keeps those operations from interleaving; {@link #destroyed} is guarded by it.
+     */
+    private final Object lock = new Object();
+    private boolean destroyed;
 
     public GameSidebar(GameImpl game) {
         this.game = game;
@@ -197,6 +205,14 @@ public class GameSidebar {
     }
 
     private void update() {
+        synchronized (lock) {
+            if (!destroyed) {
+                updateLocked();
+            }
+        }
+    }
+
+    private void updateLocked() {
         if (scoreboard != null) {
             updateScoreboard();
         }
@@ -304,15 +320,24 @@ public class GameSidebar {
 
     public void destroy() {
         task.cancel();
-        teamedSidebar.destroy();
+        synchronized (lock) {
+            destroyed = true;
+            teamedSidebar.destroy();
+        }
     }
 
     public void addPlayer(Player player) {
-        teamedSidebar.addViewer(player);
+        synchronized (lock) {
+            if (!destroyed) {
+                teamedSidebar.addViewer(player);
+            }
+        }
     }
 
     public void removePlayer(Player player) {
-        teamedSidebar.removeViewer(player);
+        synchronized (lock) {
+            teamedSidebar.removeViewer(player);
+        }
     }
 
     public Message checkMode() {
