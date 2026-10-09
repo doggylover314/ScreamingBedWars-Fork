@@ -30,6 +30,7 @@ import org.screamingsandals.bedwars.config.MainConfig;
 import org.screamingsandals.bedwars.events.ApplyPropertyToItemEventImpl;
 import org.screamingsandals.bedwars.game.GameImpl;
 import org.screamingsandals.bedwars.lib.debug.Debug;
+import org.screamingsandals.bedwars.party.PartyJoinCoordinator;
 import org.screamingsandals.bedwars.player.BedWarsPlayer;
 import org.screamingsandals.bedwars.player.PlayerManagerImpl;
 import org.screamingsandals.lib.block.Block;
@@ -51,6 +52,9 @@ import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.function.IntUnaryOperator;
+import java.util.function.Predicate;
+import java.util.function.ToIntFunction;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -470,30 +474,73 @@ public class MiscUtils {
     }
 
     public Optional<Game> getGameWithHighestPlayers(List<Game> games, boolean fee) {  // If tie choose random one
-        var biggest = games.stream()
+        return getGameWithHighestPlayers(games, fee, null);
+    }
+
+    /**
+     * Like {@link #getGameWithHighestPlayers(List, boolean)}, but a party leader is steered to an arena that has room for
+     * his whole party (otherwise the fullest arena is picked again and again and the party join is refused every time).
+     * If no arena fits the party, the normal pick is returned, so the join itself reports why the party cannot join.
+     *
+     * @param joiner the player who is going to join, {@code null} = no party consideration
+     */
+    public Optional<Game> getGameWithHighestPlayers(List<Game> games, boolean fee, @Nullable BedWarsPlayer joiner) {
+        var candidates = games.stream()
                 .filter(game -> game instanceof GameImpl)
                 .map(game -> (GameImpl) game)
                 .filter(game -> !game.requiresModeSelection())
-                .filter(waitingGame -> waitingGame.getStatus() == GameStatus.WAITING)
-                .filter(waitingGame -> waitingGame.getFee() > 0 || !fee)
-                .filter(game -> game.countConnectedPlayers() < game.getMaxPlayers())
-                .max(Comparator.comparingInt(GameImpl::countConnectedPlayers));
-
-        if (biggest.isEmpty()) {
-            return Optional.empty();
-        }
-
-        var biggestGames = games.stream()
-                .filter(game -> game instanceof GameImpl)
-                .map(game -> (GameImpl) game)
-                .filter(game -> !game.requiresModeSelection())
-                .filter(game -> game.countPlayers() == biggest.get().countPlayers())
                 .filter(waitingGame -> waitingGame.getStatus() == GameStatus.WAITING)
                 .filter(waitingGame -> waitingGame.getFee() > 0 || !fee)
                 .filter(game -> game.countConnectedPlayers() < game.getMaxPlayers())
                 .collect(Collectors.toList());
 
-        return Optional.of(biggestGames.get(MiscUtils.randInt(0, biggestGames.size()-1)));
+        return FullestPick.pick(
+                candidates,
+                GameImpl::countConnectedPlayers,
+                joiner == null ? null : game -> partyFits(joiner, game),
+                bound -> MiscUtils.randInt(0, bound - 1)
+        ).map(game -> game);
+    }
+
+    /**
+     * Whether the free slots of the arena cover everybody the player's join would bring (1 for a player without party).
+     */
+    private boolean partyFits(BedWarsPlayer joiner, GameImpl game) {
+        return PartyJoinCoordinator.getInstance().requiredSlots(joiner, game) <= game.getMaxPlayers() - game.countConnectedPlayers();
+    }
+
+    /**
+     * Pure arena pick of {@link #getGameWithHighestPlayers(List, boolean, BedWarsPlayer)} (no server classes involved).
+     * Nested, so that unit tests do not have to initialise {@code MiscUtils}.
+     */
+    static final class FullestPick {
+        private FullestPick() {
+        }
+
+        /**
+         * @param candidates  arenas the player may join at all
+         * @param players     current player count of a candidate
+         * @param preferred   candidates that satisfy it are preferred; if none does, all candidates are considered
+         *                    ({@code null} = no preference)
+         * @param randomBelow random number in {@code [0, bound)}, used to break ties between equally full arenas
+         * @return the fullest (preferred) candidate, a random one of the equally full ones
+         */
+        static <T> Optional<T> pick(List<T> candidates, ToIntFunction<T> players, @Nullable Predicate<T> preferred,
+                                    IntUnaryOperator randomBelow) {
+            var pool = candidates;
+            if (preferred != null) {
+                var fitting = candidates.stream().filter(preferred).collect(Collectors.toList());
+                if (!fitting.isEmpty()) {
+                    pool = fitting;
+                }
+            }
+            if (pool.isEmpty()) {
+                return Optional.empty();
+            }
+            int most = pool.stream().mapToInt(players).max().orElseThrow();
+            var fullest = pool.stream().filter(candidate -> players.applyAsInt(candidate) == most).collect(Collectors.toList());
+            return Optional.of(fullest.get(fullest.size() == 1 ? 0 : randomBelow.applyAsInt(fullest.size())));
+        }
     }
 
     public Optional<Game> getGameWithLowestPlayers(List<Game> games, boolean fee) {

@@ -79,6 +79,8 @@ public class MainConfig {
                 configurationNode.node("party", "enabled").set(true);
             }
 
+            migrateOldMainLobby(configurationNode);
+
             generator.start()
                 .key("locale").defValue("en")
                 .key("prefix").defValue("[BW]")
@@ -1088,7 +1090,7 @@ public class MainConfig {
                     .key("default-team-size").defValue(4)
                     .key("snap-to-block-center").defValue(true)
                     .key("show-next-step-hint").defValue(true)
-                    .key("team-generator-types").defValue(() -> List.of("iron", "gold"))
+                    .key("team-generator-types").defValue(() -> List.of("bronze"))
                     .key("team-generator-hologram").defValue(true)
                     .key("diamond-spawner-type").defValue("diamond")
                     .key("emerald-spawner-type").defValue("emerald")
@@ -1118,6 +1120,25 @@ public class MainConfig {
         } catch (ConfigurateException e) {
             e.printStackTrace();
             this.configurationNode = BasicConfigurationNode.root();
+        }
+    }
+
+    /**
+     * fork (main lobby): the pre-fork {@code /bw mainlobby} command wrote {@code mainlobby.*}, while the generator had already
+     * written the default {@code main-lobby.*} keys on the first start. Its one-shot migration copies only into a virtual
+     * node, so it never copied the old values and still removed them. Copies a lobby that was set with the old command into
+     * a main lobby that was never set; the generator then just drops the old keys.
+     */
+    static void migrateOldMainLobby(@NotNull ConfigurationNode root) {
+        var oldLobby = root.node("mainlobby");
+        var newLobby = root.node("main-lobby");
+        if (oldLobby.node("location").getString("").isBlank() || !newLobby.node("location").getString("").isBlank()) {
+            return;
+        }
+        newLobby.node("location").raw(oldLobby.node("location").raw());
+        newLobby.node("world").raw(oldLobby.node("world").raw());
+        if (!oldLobby.node("enabled").virtual()) {
+            newLobby.node("enabled").raw(oldLobby.node("enabled").raw());
         }
     }
 

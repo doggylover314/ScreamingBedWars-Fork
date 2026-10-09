@@ -113,20 +113,28 @@ public class BedWarsNPC {
                     Tasker.run(DefaultThreads.GLOBAL_THREAD, () -> game1.joinToGame(PlayerManagerImpl.getInstance().getPlayerOrCreate(player)))
             );
         }),
+        // fork: JOIN_GROUP / JOIN_VARIANT / JOIN_RANDOM pick the arena on the global thread, with the joining player, so that
+        // a party leader gets an arena with room for his party
         JOIN_GROUP((bedWarsNPC, player, type) -> {
-            MiscUtils.getGameWithHighestPlayers(GroupManagerImpl.getInstance().getGamesInGroup(bedWarsNPC.value), false).ifPresent(game ->
-                    Tasker.run(DefaultThreads.GLOBAL_THREAD, () -> game.joinToGame(PlayerManagerImpl.getInstance().getPlayerOrCreate(player)))
-            );
+            Tasker.run(DefaultThreads.GLOBAL_THREAD, () -> {
+                var bwPlayer = PlayerManagerImpl.getInstance().getPlayerOrCreate(player);
+                MiscUtils.getGameWithHighestPlayers(GroupManagerImpl.getInstance().getGamesInGroup(bedWarsNPC.value), false, bwPlayer)
+                        .ifPresent(game -> game.joinToGame(bwPlayer));
+            });
         }),
         JOIN_VARIANT((bedWarsNPC, player, type) -> {
-            MiscUtils.getGameWithHighestPlayers(GameManagerImpl.getInstance().getLocalGames().stream().filter(game -> game.getGameVariant().getName().equals(bedWarsNPC.value)).collect(Collectors.toList()), false).ifPresent(game ->
-                    Tasker.run(DefaultThreads.GLOBAL_THREAD, () -> game.joinToGame(PlayerManagerImpl.getInstance().getPlayerOrCreate(player)))
-            );
+            Tasker.run(DefaultThreads.GLOBAL_THREAD, () -> {
+                var bwPlayer = PlayerManagerImpl.getInstance().getPlayerOrCreate(player);
+                MiscUtils.getGameWithHighestPlayers(GameManagerImpl.getInstance().getLocalGames().stream().filter(game -> game.getGameVariant().getName().equals(bedWarsNPC.value)).collect(Collectors.toList()), false, bwPlayer)
+                        .ifPresent(game -> game.joinToGame(bwPlayer));
+            });
         }),
         JOIN_RANDOM((bedWarsNPC, player, type) -> {
-            GameManagerImpl.getInstance().getGameWithHighestPlayers(false).ifPresent(game ->
-                    Tasker.run(DefaultThreads.GLOBAL_THREAD, () -> game.joinToGame(PlayerManagerImpl.getInstance().getPlayerOrCreate(player)))
-            );
+            Tasker.run(DefaultThreads.GLOBAL_THREAD, () -> {
+                var bwPlayer = PlayerManagerImpl.getInstance().getPlayerOrCreate(player);
+                MiscUtils.getGameWithHighestPlayers(GameManagerImpl.getInstance().getGames(), false, bwPlayer)
+                        .ifPresent(game -> game.joinToGame(bwPlayer));
+            });
         }),
         TELEPORT_TO_LOBBY((bedWarsNPC, player, type) ->
                 Tasker.run(DefaultThreads.GLOBAL_THREAD, () -> MainLobby.teleportFromNpc(player))
