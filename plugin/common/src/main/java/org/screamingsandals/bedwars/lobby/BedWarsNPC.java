@@ -25,12 +25,12 @@ import lombok.RequiredArgsConstructor;
 import org.jetbrains.annotations.Nullable;
 import org.screamingsandals.bedwars.game.GameManagerImpl;
 import org.screamingsandals.bedwars.game.GroupManagerImpl;
+import org.screamingsandals.bedwars.game.mode.ModeJoinService;
 import org.screamingsandals.bedwars.inventories.GamesInventory;
 import org.screamingsandals.bedwars.player.PlayerManagerImpl;
 import org.screamingsandals.bedwars.utils.MiscUtils;
 import org.screamingsandals.bedwars.utils.SerializableLocation;
 import org.screamingsandals.lib.Server;
-import org.screamingsandals.lib.lang.Message;
 import org.screamingsandals.lib.npc.NPC;
 import org.screamingsandals.lib.npc.skin.NPCSkin;
 import org.screamingsandals.lib.player.Player;
@@ -54,6 +54,10 @@ public class BedWarsNPC {
     private String value;
     private boolean shouldLookAtPlayer = true;
     private final List<String> hologramAbove = new ArrayList<>();
+    /**
+     * Last state the hologram was rendered for (NpcHologramPlaceholders); transient: not saved, not part of equals.
+     */
+    private transient @Nullable String lastHologramSignature;
 
     @Getter
     private transient NPC npc;
@@ -65,7 +69,8 @@ public class BedWarsNPC {
                     .lookAtPlayer(shouldLookAtPlayer);
 
             var holo = npc.hologram();
-            hologramAbove.forEach(s -> holo.bottomLine(Message.ofRichText(s)));
+            hologramAbove.forEach(s -> holo.bottomLine(NpcHologramPlaceholders.line(this, s)));
+            lastHologramSignature = null;
 
             if (skin != null && skin.getValue() != null) {
                 npc.skin(skin);
@@ -122,12 +127,18 @@ public class BedWarsNPC {
             GameManagerImpl.getInstance().getGameWithHighestPlayers(false).ifPresent(game ->
                     Tasker.run(DefaultThreads.GLOBAL_THREAD, () -> game.joinToGame(PlayerManagerImpl.getInstance().getPlayerOrCreate(player)))
             );
-        });
+        }),
+        TELEPORT_TO_LOBBY((bedWarsNPC, player, type) ->
+                Tasker.run(DefaultThreads.GLOBAL_THREAD, () -> MainLobby.teleportFromNpc(player))
+        ),
+        JOIN_MODE((bedWarsNPC, player, type) ->
+                Tasker.run(DefaultThreads.GLOBAL_THREAD, () -> ModeJoinService.getInstance().joinMode(player, bedWarsNPC.value))
+        );
 
         private final Handler handler;
 
         public boolean requireArguments() {
-            return this != DUMMY && this != JOIN_RANDOM;
+            return this != DUMMY && this != JOIN_RANDOM && this != TELEPORT_TO_LOBBY;
         }
 
         public interface Handler {

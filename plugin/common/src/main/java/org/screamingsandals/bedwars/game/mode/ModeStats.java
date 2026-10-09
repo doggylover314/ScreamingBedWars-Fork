@@ -17,10 +17,15 @@
  * along with Screaming BedWars. If not, see <https://www.gnu.org/licenses/>.
  */
 
-@Init(services = {
-        ModeManager.class,
-        ModeJoinService.class
-})
 package org.screamingsandals.bedwars.game.mode;
 
-import org.screamingsandals.lib.utils.annotations.Init;
+/**
+ * Player counts of one mode (holograms, placeholders, /bw mode list).
+ */
+public record ModeStats(int waitingPlayers, int playingPlayers, int joinableArenas) {
+    public static final ModeStats EMPTY = new ModeStats(0, 0, 0);
+
+    public int players() {
+        return waitingPlayers + playingPlayers;
+    }
+}

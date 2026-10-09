@@ -379,9 +379,10 @@ public class MiscUtils {
 
         final var locationList = new ArrayList<Location>();
 
-        for(int x = 0; x<Math.abs(loc1.getBlockX()-loc2.getBlockX()); x++){
-            for(int y = 0; y<Math.abs(loc1.getBlockY()-loc2.getBlockY()); y++){
-                for(int z = 0; z<Math.abs(loc1.getBlockZ()-loc2.getBlockZ()); z++){
+        // inclusive on every axis (like the arena box): the max X/Y/Z layer belongs to the region as well
+        for(int x = 0; x<=Math.abs(loc1.getBlockX()-loc2.getBlockX()); x++){
+            for(int y = 0; y<=Math.abs(loc1.getBlockY()-loc2.getBlockY()); y++){
+                for(int z = 0; z<=Math.abs(loc1.getBlockZ()-loc2.getBlockZ()); z++){
                     locationList.add(new Location(lowX+x, lowY+y, lowZ+z, 0, 0, loc1.getWorld()));
                 }
             }
@@ -472,6 +473,7 @@ public class MiscUtils {
         var biggest = games.stream()
                 .filter(game -> game instanceof GameImpl)
                 .map(game -> (GameImpl) game)
+                .filter(game -> !game.requiresModeSelection())
                 .filter(waitingGame -> waitingGame.getStatus() == GameStatus.WAITING)
                 .filter(waitingGame -> waitingGame.getFee() > 0 || !fee)
                 .filter(game -> game.countConnectedPlayers() < game.getMaxPlayers())
@@ -484,6 +486,7 @@ public class MiscUtils {
         var biggestGames = games.stream()
                 .filter(game -> game instanceof GameImpl)
                 .map(game -> (GameImpl) game)
+                .filter(game -> !game.requiresModeSelection())
                 .filter(game -> game.countPlayers() == biggest.get().countPlayers())
                 .filter(waitingGame -> waitingGame.getStatus() == GameStatus.WAITING)
                 .filter(waitingGame -> waitingGame.getFee() > 0 || !fee)
@@ -497,6 +500,7 @@ public class MiscUtils {
         return games.stream()
                 .filter(game -> game instanceof GameImpl)
                 .map(game -> (GameImpl) game)
+                .filter(game -> !game.requiresModeSelection())
                 .filter(game -> game.getStatus() == GameStatus.WAITING)
                 .filter(game -> game.countConnectedPlayers() < game.getMaxPlayers())
                 .filter(game -> {
@@ -513,6 +517,7 @@ public class MiscUtils {
         return games.stream()
                 .filter(game -> game instanceof GameImpl)
                 .map(game -> (GameImpl) game)
+                .filter(game -> !game.requiresModeSelection())
                 .filter(game -> game.getStatus() == GameStatus.WAITING)
                 .filter(game -> {
                     if (fee) {

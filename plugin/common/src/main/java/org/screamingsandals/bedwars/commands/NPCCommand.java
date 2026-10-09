@@ -22,15 +22,22 @@ package org.screamingsandals.bedwars.commands;
 import cloud.commandframework.Command;
 import cloud.commandframework.CommandManager;
 import cloud.commandframework.arguments.standard.BooleanArgument;
+import cloud.commandframework.arguments.standard.DoubleArgument;
 import cloud.commandframework.arguments.standard.EnumArgument;
 import cloud.commandframework.arguments.standard.IntegerArgument;
 import cloud.commandframework.arguments.standard.StringArgument;
+import org.screamingsandals.bedwars.config.MainConfig;
 import org.screamingsandals.bedwars.game.GameManagerImpl;
 import org.screamingsandals.bedwars.game.GroupManagerImpl;
+import org.screamingsandals.bedwars.game.mode.ModeManager;
 import org.screamingsandals.bedwars.inventories.GamesInventory;
+import org.screamingsandals.bedwars.lang.ForkLangKeys;
 import org.screamingsandals.bedwars.lang.LangKeys;
 import org.screamingsandals.bedwars.lobby.BedWarsNPC;
+import org.screamingsandals.bedwars.lobby.MainLobby;
 import org.screamingsandals.bedwars.lobby.NPCManager;
+import org.screamingsandals.bedwars.lobby.NpcHologramPlaceholders;
+import org.screamingsandals.bedwars.lobby.NpcRowLayout;
 import org.screamingsandals.bedwars.utils.SerializableLocation;
 import org.screamingsandals.bedwars.variants.VariantManagerImpl;
 import org.screamingsandals.lib.lang.Message;
@@ -38,9 +45,11 @@ import org.screamingsandals.lib.npc.skin.NPCSkin;
 import org.screamingsandals.lib.player.Player;
 import org.screamingsandals.lib.sender.CommandSender;
 import org.screamingsandals.lib.utils.annotations.Service;
+import org.spongepowered.configurate.serialize.SerializationException;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 @Service
 public class NPCCommand extends BaseCommand {
@@ -79,6 +88,47 @@ public class NPCCommand extends BaseCommand {
                                     .placeholder("z", loc.getZ(), 2)
                                     .placeholder("yaw", loc.getYaw(), 5)
                                     .placeholder("pitch", loc.getPitch(), 5));
+                        })
+        );
+
+        manager.command(
+                commandSenderWrapperBuilder
+                        .literal("spawnmodes")
+                        .argument(IntegerArgument.optional("team-count", 0))
+                        .argument(DoubleArgument.optional("spacing", 0))
+                        .handler(commandContext -> {
+                            var player = commandContext.getSender().as(Player.class);
+                            int teamCount = commandContext.get("team-count");
+                            double spacing = commandContext.get("spacing");
+                            if (spacing <= 0) {
+                                spacing = MainConfig.getInstance().node("modes", "npc-row-spacing").getDouble(2.0);
+                            }
+                            var modes = ModeManager.getInstance().getModes().stream()
+                                    .filter(m -> teamCount <= 0 || m.teamCount() == teamCount)
+                                    .collect(Collectors.toList());
+                            if (modes.isEmpty()) {
+                                player.sendMessage(Message.of(ForkLangKeys.MODES_ADMIN_NO_MODES).defaultPrefix());
+                                return;
+                            }
+                            List<String> template;
+                            try {
+                                template = MainConfig.getInstance().node("modes", "npc-hologram-template").getList(String.class, List.of("<mode>"));
+                            } catch (SerializationException e) {
+                                template = List.of("<mode>");
+                            }
+                            var base = player.getLocation();
+                            var offsets = NpcRowLayout.rowOffsets(modes.size(), spacing, base.getYaw());
+                            for (int i = 0; i < modes.size(); i++) {
+                                var npc = new BedWarsNPC();
+                                npc.setLocation(new SerializableLocation(base.add(offsets.get(i).x(), 0, offsets.get(i).z())));
+                                npc.setAction(BedWarsNPC.Action.JOIN_MODE);
+                                npc.setValue(modes.get(i).id());
+                                npc.getHologramAbove().addAll(template);
+                                npc.spawn();
+                                lobbyNPCManager.getNpcs().add(npc);
+                            }
+                            lobbyNPCManager.setModified(true);
+                            player.sendMessage(Message.of(ForkLangKeys.MODES_ADMIN_NPC_SPAWNED).defaultPrefix().placeholder("count", modes.size()));
                         })
         );
 
@@ -168,6 +218,8 @@ public class NPCCommand extends BaseCommand {
                                             return GroupManagerImpl.getInstance().getExistingGroups();
                                         case JOIN_VARIANT:
                                             return VariantManagerImpl.getInstance().getVariantNames();
+                                        case JOIN_MODE:
+                                            return ModeManager.getInstance().getModeIds();
                                         default:
                                             return List.of();
                                     }
@@ -186,15 +238,26 @@ public class NPCCommand extends BaseCommand {
                                 player.sendMessage(Message.of(LangKeys.ADMIN_NPC_REQUIRES_VALUE).defaultPrefix());
                                 return;
                             }
+                            if (action == BedWarsNPC.Action.JOIN_MODE) {
+                                value = value.trim().toLowerCase(Locale.ROOT);
+                                if (ModeManager.getInstance().getMode(value).isEmpty()) {
+                                    player.sendMessage(Message.of(ForkLangKeys.MODES_UNKNOWN_MODE).defaultPrefix().placeholderRaw("mode", value));
+                                    return;
+                                }
+                            }
 
                             var npc = NPCS_IN_HAND.get(player.getUuid());
                             npc.setAction(action);
                             npc.setValue(value);
+                            npc.setLastHologramSignature(null);
                             lobbyNPCManager.setModified(true);
 
                             player.sendMessage(Message.of(LangKeys.ADMIN_NPC_ACTION_SET).defaultPrefix()
                                     .placeholder("action", action.name())
                                     .placeholder("value", value));
+                            if (action == BedWarsNPC.Action.TELEPORT_TO_LOBBY && MainLobby.getLocation() == null) {
+                                player.sendMessage(Message.of(ForkLangKeys.MODES_MAIN_LOBBY_NOT_SET).defaultPrefix());
+                            }
                         })
         );
 
@@ -239,7 +302,8 @@ public class NPCCommand extends BaseCommand {
 
                             var npc = NPCS_IN_HAND.get(player.getUuid());
                             npc.getHologramAbove().add(line);
-                            npc.getNpc().hologram().bottomLine(Message.ofRichText(line));
+                            npc.getNpc().hologram().bottomLine(NpcHologramPlaceholders.line(npc, line));
+                            npc.setLastHologramSignature(null);
                             lobbyNPCManager.setModified(true);
                             player.sendMessage(Message.of(LangKeys.ADMIN_HOLOGRAM_LINE_ADDED).defaultPrefix()
                                     .placeholder("line", line)
@@ -273,7 +337,8 @@ public class NPCCommand extends BaseCommand {
                                 return;
                             }
                             npc.getHologramAbove().set(number - 1, line);
-                            npc.getNpc().hologram().replaceLine(number - 1, Message.ofRichText(line));
+                            npc.getNpc().hologram().replaceLine(number - 1, NpcHologramPlaceholders.line(npc, line));
+                            npc.setLastHologramSignature(null);
                             lobbyNPCManager.setModified(true);
                             player.sendMessage(Message.of(LangKeys.ADMIN_HOLOGRAM_LINE_SET).defaultPrefix()
                                     .placeholder("linenumber", number)
@@ -306,7 +371,8 @@ public class NPCCommand extends BaseCommand {
                                 return;
                             }
                             npc.getHologramAbove().remove(number - 1);
-                            npc.getNpc().hologram().removeLine(number); // why does this not work the same way as replaceLine??
+                            npc.destroy(); // slib VisualUtils.removeEntryAndMoveRest cannot remove the last line; respawn instead
+                            npc.spawn();
                             lobbyNPCManager.setModified(true);
                             player.sendMessage(Message.of(LangKeys.ADMIN_HOLOGRAM_LINE_REMOVED).defaultPrefix()
                                     .placeholder("linenumber", number)
@@ -327,7 +393,8 @@ public class NPCCommand extends BaseCommand {
 
                             var npc = NPCS_IN_HAND.get(player.getUuid());
                             npc.getHologramAbove().clear();
-                            npc.getNpc().displayName(List.of());
+                            npc.destroy(); // respawn without hologram lines (slib keeps stale pieces otherwise)
+                            npc.spawn();
                             lobbyNPCManager.setModified(true);
                             player.sendMessage(Message.of(LangKeys.ADMIN_HOLOGRAM_RESET).defaultPrefix());
                         })

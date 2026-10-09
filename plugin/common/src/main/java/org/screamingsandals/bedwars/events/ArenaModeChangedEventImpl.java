@@ -17,10 +17,24 @@
  * along with Screaming BedWars. If not, see <https://www.gnu.org/licenses/>.
  */
 
-@Init(services = {
-        ModeManager.class,
-        ModeJoinService.class
-})
-package org.screamingsandals.bedwars.game.mode;
+package org.screamingsandals.bedwars.events;
 
-import org.screamingsandals.lib.utils.annotations.Init;
+import lombok.Data;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+import org.screamingsandals.bedwars.game.GameImpl;
+import org.screamingsandals.bedwars.game.mode.ModeDefinition;
+import org.screamingsandals.lib.event.Event;
+
+/**
+ * Fired when an arena gets a game mode assigned or loses it. Named "Arena..." to avoid confusion with player game modes.
+ */
+@Data
+public class ArenaModeChangedEventImpl implements Event {
+    private final @NotNull GameImpl game;
+    private final @Nullable ModeDefinition previousMode;
+    /**
+     * null = the mode was cleared
+     */
+    private final @Nullable ModeDefinition newMode;
+}

@@ -48,11 +48,17 @@ import org.screamingsandals.bedwars.config.RecordSave;
 import org.screamingsandals.bedwars.utils.EconomyUtils;
 import org.screamingsandals.bedwars.entities.EntitiesManagerImpl;
 import org.screamingsandals.bedwars.events.*;
+import org.screamingsandals.bedwars.game.mode.ModeConfigKeys;
 import org.screamingsandals.bedwars.game.mode.ModeDefinition;
+import org.screamingsandals.bedwars.game.mode.ModeManager;
+import org.screamingsandals.bedwars.game.mode.TeamAssignment;
 import org.screamingsandals.bedwars.game.target.*;
 import org.screamingsandals.bedwars.inventories.TeamSelectorInventory;
+import org.screamingsandals.bedwars.lang.ForkLangKeys;
 import org.screamingsandals.bedwars.lang.LangKeys;
+import org.screamingsandals.bedwars.lobby.MainLobby;
 import org.screamingsandals.bedwars.lib.debug.Debug;
+import org.screamingsandals.bedwars.party.PartyJoinCoordinator;
 import org.screamingsandals.bedwars.player.BedWarsPlayer;
 import org.screamingsandals.bedwars.player.PlayerManagerImpl;
 import org.screamingsandals.bedwars.region.RegionImpl;
@@ -99,7 +105,6 @@ import org.screamingsandals.lib.utils.ResourceLocation;
 import org.screamingsandals.lib.visuals.Visual;
 import org.screamingsandals.lib.world.Location;
 import org.screamingsandals.lib.world.World;
-import org.screamingsandals.lib.world.Worlds;
 import org.screamingsandals.lib.world.chunk.Chunk;
 import org.screamingsandals.lib.world.weather.WeatherType;
 import org.spongepowered.configurate.ConfigurationNode;
@@ -176,9 +181,13 @@ public class GameImpl implements LocalGame {
     @Setter(AccessLevel.PROTECTED)
     private boolean preparing = false;
 
-    // ===== modes (C4): runtime only, never saved (foundation: field only; package P6 adds the rest) =====
+    // ===== modes (C4): runtime only, never saved =====
     @Setter(AccessLevel.NONE)
     private volatile @Nullable ModeDefinition activeMode;
+    @Setter(AccessLevel.NONE)
+    private volatile long activeModeClaimedAt;
+    @Setter(AccessLevel.NONE)
+    private volatile boolean startConditionsMet; // last result of isAllowedToStart(), read by the async lobby sidebar
 
     public void removeEntity(Entity e) {
         if (ArenaUtils.isInArea(e.getLocation(), pos1, pos2)) {
@@ -239,9 +248,89 @@ public class GameImpl implements LocalGame {
         return players.size() >= getMinPlayers();
     }
 
+    @Override
+    public int getMinPlayers() {
+        var mode = activeMode;
+        return mode != null ? mode.minPlayers() : minPlayers;
+    }
+
     /** Value stored in the arena file (ignores an active mode). */
     public int getConfiguredMinPlayers() {
         return minPlayers;
+    }
+
+    public void recalculateMaxPlayers() {
+        int sum = 0;
+        for (TeamImpl team : teams) {
+            sum += team.getMaxPlayers(); // effective (mode override) value
+        }
+        calculatedMaxPlayers = sum;
+    }
+
+    public boolean isTeamSelectionAllowed() {
+        return activeMode == null || !configurationContainer.getOrDefault(ModeConfigKeys.DISABLE_TEAM_SELECTION, true);
+    }
+
+    /** True while this idle arena may only be entered through JOIN_MODE / /bw mode join. */
+    public boolean requiresModeSelection() {
+        return activeMode == null
+                && status == GameStatus.WAITING
+                && !isBungeeEnabled() // bungee: the hub picks the arena (auto-connect)
+                && ModeManager.isModesEnabled()
+                && configurationContainer.getOrDefault(ModeConfigKeys.ONLY_VIA_MODE_SELECTION, false)
+                && ModeManager.getInstance().hasModeFor(this); // never lock an arena no mode can claim
+    }
+
+    /** Claims this idle arena for a mode. @return false if the arena is not idle or has a different team count. */
+    public boolean applyMode(@NotNull ModeDefinition mode) {
+        if (status != GameStatus.WAITING || preparing || !players.isEmpty() || teams.size() != mode.teamCount()) {
+            return false;
+        }
+        var previous = activeMode;
+        activeMode = mode;
+        activeModeClaimedAt = System.currentTimeMillis();
+        teams.forEach(team -> team.setMaxPlayersOverride(mode.teamSize()));
+        recalculateMaxPlayers();
+        dropTeamSelectorInventory();
+        SignUtils.updateSigns(this);
+        Debug.info(name + ": mode " + mode.id() + " assigned");
+        EventManager.fire(new ArenaModeChangedEventImpl(this, previous, mode));
+        return true;
+    }
+
+    public void clearActiveMode() {
+        var previous = activeMode;
+        if (previous == null) {
+            return;
+        }
+        activeMode = null;
+        activeModeClaimedAt = 0;
+        teams.forEach(team -> team.setMaxPlayersOverride(null));
+        recalculateMaxPlayers();
+        dropTeamSelectorInventory();
+        SignUtils.updateSigns(this);
+        Debug.info(name + ": mode " + previous.id() + " cleared");
+        EventManager.fire(new ArenaModeChangedEventImpl(this, previous, null));
+    }
+
+    /** The selector GUI caches team max sizes; rebuild it in the next lobby. */
+    private void dropTeamSelectorInventory() {
+        if (teamSelectorInventory != null) {
+            teamSelectorInventory.destroy();
+            teamSelectorInventory = null;
+        }
+    }
+
+    /** Mode games: removes every lobby team membership before the final assignment (WAITING only). */
+    public void resetLobbyTeams() {
+        if (status != GameStatus.WAITING) {
+            return;
+        }
+        for (var team : teams) {
+            team.getPlayers().clear();
+            team.setForced(false);
+        }
+        teamsInGame.clear();
     }
 
     public int countPlayers() {
@@ -571,11 +660,11 @@ public class GameImpl implements LocalGame {
                 gamePlayer.invClean(); // temp fix for inventory issues?
                 SpawnEffects.spawnEffect(GameImpl.this, gamePlayer, "game-effects.lobbyjoin");
 
-                if (configurationContainer.getOrDefault(GameConfigurationContainer.JOIN_RANDOM_TEAM_ON_JOIN, false)) {
+                if (activeMode == null && configurationContainer.getOrDefault(GameConfigurationContainer.JOIN_RANDOM_TEAM_ON_JOIN, false)) {
                     joinRandomTeam(gamePlayer);
                 }
 
-                if (configurationContainer.getOrDefault(GameConfigurationContainer.TEAM_JOIN_ITEM_ENABLED, false)) {
+                if (isTeamSelectionAllowed() && configurationContainer.getOrDefault(GameConfigurationContainer.TEAM_JOIN_ITEM_ENABLED, false)) {
                     int compassPosition = MainConfig.getInstance().node("hotbar", "selector").getInt(0);
                     if (compassPosition >= 0 && compassPosition <= 8) {
                         var compass = MainConfig.getInstance()
@@ -709,17 +798,17 @@ public class GameImpl implements LocalGame {
         otherVisuals.forEach(visual -> visual.removeViewer(gamePlayer));
         gamePlayer.restoreDefaultScoreboard();
 
-        if (MainConfig.getInstance().node("mainlobby", "enabled").getBoolean()
-                && !MainConfig.getInstance().node("bungee", "enabled").getBoolean()) {
-            try {
-                Location mainLobbyLocation = MiscUtils.readLocationFromString(
-                        Objects.requireNonNull(Worlds.getWorld(MainConfig.getInstance().node("mainlobby", "world").getString())),
-                        Objects.requireNonNull(MainConfig.getInstance().node("mainlobby", "location").getString())
-                );
-                Tasker.runDelayed(gamePlayer, () -> gamePlayer.teleport(mainLobbyLocation), 1L, TaskerTime.TICKS);
+        if (MainLobby.shouldReturnPlayersAfterGame()) {
+            var mainLobbyLocation = MainLobby.getLocation();
+            if (mainLobbyLocation != null) {
+                Tasker.runDelayed(gamePlayer, () -> {
+                    if (!gamePlayer.isInGame()) { // the player may have switched into another game in the same tick (party pull, NPC join)
+                        gamePlayer.teleport(mainLobbyLocation);
+                    }
+                }, 1L, TaskerTime.TICKS);
                 gamePlayer.mainLobbyUsed = true;
-            } catch (Throwable t) {
-                BedWarsPlugin.getInstance().getLogger().error("You didn't setup the mainlobby properly! Do it via commands, not directly in config.yml!");
+            } else {
+                BedWarsPlugin.getInstance().getLogger().error("main-lobby is enabled but main-lobby.world/location is missing or invalid! Use /bw mainlobby set.");
             }
         }
 
@@ -761,6 +850,8 @@ public class GameImpl implements LocalGame {
             }
             countdown = -1;
             teamsInGame.clear();
+            startConditionsMet = false;
+            clearActiveMode();
 
             for (GameStoreImpl store : gameStore) {
                 var villager = store.kill();
@@ -776,10 +867,7 @@ public class GameImpl implements LocalGame {
             preparing = true;
             status = GameStatus.WAITING;
             countdown = -1;
-            calculatedMaxPlayers = 0;
-            for (TeamImpl team : teams) {
-                calculatedMaxPlayers += team.getMaxPlayers();
-            }
+            recalculateMaxPlayers();
             Tasker.run(DefaultThreads.GLOBAL_THREAD, () -> SignUtils.updateSigns(this));
 
             if (MainConfig.getInstance().node("bossbar", "use-xp-bar").getBoolean(false)) {
@@ -800,6 +888,7 @@ public class GameImpl implements LocalGame {
         for (BedWarsPlayer p : clonedPlayers) {
             p.changeGame(null);
         }
+        clearActiveMode();
         if (status != GameStatus.REBUILDING) {
             status = GameStatus.DISABLED;
             SignUtils.updateSigns(this);
@@ -822,6 +911,11 @@ public class GameImpl implements LocalGame {
 
         if (preparing) {
             Tasker.runDelayed(DefaultThreads.GLOBAL_THREAD, () -> joinToGame(player), 1L, TaskerTime.TICKS);
+            return;
+        }
+
+        // fork: built-in party (C3) - non-leaders may not join alone; a leader's join becomes a party join
+        if (!PartyJoinCoordinator.getInstance().handleJoinRequest(player, this)) {
             return;
         }
 
@@ -867,6 +961,18 @@ public class GameImpl implements LocalGame {
             return;
         }
 
+        if (requiresModeSelection() && !player.hasPermission(BedWarsPermission.ADMIN_PERMISSION.asPermission())) {
+            Message.of(ForkLangKeys.MODES_ARENA_MODE_SELECTION_ONLY)
+                    .placeholder("arena", getDisplayNameComponent())
+                    .prefixOrDefault(getCustomPrefixComponent())
+                    .send(player);
+            return;
+        }
+
+        if (player.getGame() != this && TeamAssignment.refuseUnplaceableJoin(this, player)) {
+            return; // no admin bypass: an unplaceable group would block the lobby for everybody
+        }
+
         if (players.size() >= calculatedMaxPlayers && status == GameStatus.WAITING) {
             if (player.canJoinFullGame()) {
                 List<BedWarsPlayer> withoutVIP = getPlayersWithoutVIP();
@@ -894,7 +1000,7 @@ public class GameImpl implements LocalGame {
                 if (withoutVIP.size() == 1) {
                     kickPlayer = withoutVIP.get(0);
                 } else {
-                    kickPlayer = withoutVIP.get(MiscUtils.randInt(0, players.size() - 1));
+                    kickPlayer = withoutVIP.get(MiscUtils.randInt(0, withoutVIP.size() - 1));
                 }
 
                 if (isBungeeEnabled()) {
@@ -1087,8 +1193,11 @@ public class GameImpl implements LocalGame {
     }
 
     public void joinRandomTeam(BedWarsPlayer player) {
+        if (activeMode != null) {
+            return; // mode games: teams are assigned when the lobby countdown ends (TeamAssignment.assignModeTeams)
+        }
         // TODO: add api event to allow manipulation with this process
-        var teamForJoin = this.chooseRandomTeamForPlayerToJoin(false, false);
+        var teamForJoin = TeamAssignment.chooseTeamForJoiningPlayer(this, player); // party-aware, falls back to chooseRandomTeamForPlayerToJoin(false, false)
 
         if (teamForJoin == null) {
             return;
@@ -1329,6 +1438,7 @@ public class GameImpl implements LocalGame {
         this.countdown = -1;
         SignUtils.updateSigns(this);
         cancelTask();
+        clearActiveMode();
         Debug.info(name + ": rebuilding ends");
     }
 
@@ -1359,9 +1469,18 @@ public class GameImpl implements LocalGame {
         if (status == GameStatus.WAITING) {
             displayName = MiscUtils.stripColor(displayName);
             playerGameProfile.closeInventory();
+            if (!isTeamSelectionAllowed()) {
+                Message.of(ForkLangKeys.MODES_TEAM_SELECTION_DISABLED)
+                        .prefixOrDefault(getCustomPrefixComponent())
+                        .placeholder("mode", ModeManager.displayNameComponent(activeMode))
+                        .send(playerGameProfile);
+                return;
+            }
             for (TeamImpl team : teams) {
                 if (displayName.equals(team.getName())) {
-                    internalTeamJoin(playerGameProfile, team, false);
+                    if (!TeamAssignment.selectTeamForParty(this, playerGameProfile, team)) {
+                        internalTeamJoin(playerGameProfile, team, false);
+                    }
                     break;
                 }
             }
@@ -1930,19 +2049,26 @@ public class GameImpl implements LocalGame {
     }
 
     public void makePlayersJoinRandomTeams() {
-        for (BedWarsPlayer player : players) {
-            if (getPlayerTeam(player) == null) {
-                joinRandomTeam(player);
-            }
+        if (activeMode != null) {
+            TeamAssignment.assignModeTeams(this);
+        } else {
+            TeamAssignment.fillTeamsClassic(this); // identical to the old loop when nobody is in a party
         }
     }
 
     public boolean isAllowedToStart() {
-        return players.size() >= getMinPlayers()
-                && (
-                teamsInGame.size() > 1
-                        || (getConfigurationContainer().getOrDefault(GameConfigurationContainer.JOIN_RANDOM_TEAM_AFTER_LOBBY, false) && countRespawnable() < players.size())
-        );
+        boolean result;
+        if (activeMode != null) {
+            result = players.size() >= getMinPlayers() && TeamAssignment.canFormModeTeams(this);
+        } else {
+            result = players.size() >= getMinPlayers()
+                    && (
+                    teamsInGame.size() > 1
+                            || (getConfigurationContainer().getOrDefault(GameConfigurationContainer.JOIN_RANDOM_TEAM_AFTER_LOBBY, false) && countRespawnable() < players.size())
+            );
+        }
+        startConditionsMet = result;
+        return result;
     }
 
     public void configureChunkTickets() {
@@ -2161,7 +2287,7 @@ public class GameImpl implements LocalGame {
     }
 
     protected void startHealthIndicator() {
-        if (healthIndicator != null) {
+        if (healthIndicator == null) {
             var healthIndicator = HealthIndicator.of()
                     .symbol(Component.text("\u2665", Color.RED))
                     .show()

@@ -23,6 +23,8 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import org.screamingsandals.bedwars.commands.NPCCommand;
+import org.screamingsandals.bedwars.config.MainConfig;
+import org.screamingsandals.bedwars.game.mode.ModeManager;
 import org.screamingsandals.bedwars.lang.LangKeys;
 import org.screamingsandals.lib.event.OnEvent;
 import org.screamingsandals.lib.event.player.PlayerJoinEvent;
@@ -33,33 +35,44 @@ import org.screamingsandals.lib.plugin.ServiceManager;
 import org.screamingsandals.lib.tasker.DefaultThreads;
 import org.screamingsandals.lib.tasker.Tasker;
 import org.screamingsandals.lib.tasker.TaskerTime;
+import org.screamingsandals.lib.tasker.task.Task;
 import org.screamingsandals.lib.utils.InteractType;
 import org.screamingsandals.lib.utils.annotations.Service;
 import org.screamingsandals.lib.utils.annotations.ServiceDependencies;
 import org.screamingsandals.lib.utils.annotations.methods.OnPostEnable;
 import org.screamingsandals.lib.utils.annotations.methods.OnPreDisable;
 import org.screamingsandals.lib.utils.annotations.parameters.ConfigFile;
+import org.screamingsandals.lib.utils.logger.Logger;
 import org.spongepowered.configurate.ConfigurateException;
 import org.spongepowered.configurate.gson.GsonConfigurationLoader;
 import org.spongepowered.configurate.serialize.SerializationException;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Set;
 
 @Service
 @ServiceDependencies(dependsOn = {
-        org.screamingsandals.lib.npc.NPCManager.class
+        org.screamingsandals.lib.npc.NPCManager.class,
+        ModeManager.class
 })
 @RequiredArgsConstructor
 public class NPCManager {
     @ConfigFile(value = "database/npcdb.json")
     private final GsonConfigurationLoader loader;
+    private final Logger logger;
     @Getter
     @Setter
     private boolean modified;
 
     @Getter
     private final List<BedWarsNPC> npcs = new ArrayList<>();
+
+    private Task hologramRefreshTask;
+    // NPCs whose hologram refresh already failed once; logged only the first time to avoid log spam every refresh tick
+    private final Set<BedWarsNPC> failedHologramRefreshes = Collections.newSetFromMap(new IdentityHashMap<>());
 
     public static NPCManager getInstance() {
         return ServiceManager.get(NPCManager.class);
@@ -86,10 +99,37 @@ public class NPCManager {
             e.printStackTrace();
         }
 
+        // D34: slib holograms do not refresh by themselves; re-send the lines that contain placeholders
+        cancelHologramRefresh();
+        int seconds = Math.max(1, MainConfig.getInstance().node("modes", "npc-hologram-refresh-seconds").getInt(2));
+        hologramRefreshTask = Tasker.runRepeatedly(DefaultThreads.GLOBAL_THREAD, this::refreshHolograms, seconds, TaskerTime.SECONDS);
+    }
+
+    private void refreshHolograms() {
+        for (var npc : List.copyOf(npcs)) {
+            try {
+                NpcHologramPlaceholders.refresh(npc);
+            } catch (Throwable t) {
+                if (failedHologramRefreshes.add(npc)) {
+                    logger.warn("Could not refresh the hologram of an NPC", t);
+                }
+            }
+        }
+    }
+
+    private void cancelHologramRefresh() {
+        failedHologramRefreshes.clear();
+        if (hologramRefreshTask != null) {
+            if (hologramRefreshTask.isScheduledOrRunning()) {
+                hologramRefreshTask.cancel();
+            }
+            hologramRefreshTask = null;
+        }
     }
 
     @OnPreDisable
     public void onPreDisable() {
+        cancelHologramRefresh();
         if (!modified) {
             return;
         }
@@ -142,7 +182,7 @@ public class NPCManager {
     @OnEvent
     public void onNPCInteract(NPCInteractEvent event) {
         npcs.stream()
-                .filter(bedWarsNPC1 -> bedWarsNPC1.getNpc().equals(event.visual()))
+                .filter(bedWarsNPC1 -> event.visual().equals(bedWarsNPC1.getNpc()))
                 .findFirst()
                 .ifPresent(npc -> {
                     if (event.interactType() == InteractType.RIGHT_CLICK && NPCCommand.SELECTING_NPC.contains(event.player().getUuid())) {

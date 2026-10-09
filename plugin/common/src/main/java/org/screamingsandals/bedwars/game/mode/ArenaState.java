@@ -17,10 +17,16 @@
  * along with Screaming BedWars. If not, see <https://www.gnu.org/licenses/>.
  */
 
-@Init(services = {
-        ModeManager.class,
-        ModeJoinService.class
-})
 package org.screamingsandals.bedwars.game.mode;
 
-import org.screamingsandals.lib.utils.annotations.Init;
+/**
+ * State of an arena as seen by the mode arena selection.
+ */
+public enum ArenaState {
+    /** Idle or lobby phase, joinable. */
+    WAITING,
+    /** Running, celebrating or rebuilding. */
+    BUSY,
+    /** Disabled, in edit mode, preparing or locked by a clone job. */
+    UNAVAILABLE
+}
