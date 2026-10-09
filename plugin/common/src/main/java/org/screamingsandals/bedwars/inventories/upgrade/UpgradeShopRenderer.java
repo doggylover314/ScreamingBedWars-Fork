@@ -87,6 +87,7 @@ public final class UpgradeShopRenderer {
         var itemName = UpgradeShopHandler.itemName(data, info.getStack(), viewer);
         var lore = new ArrayList<>(info.getStack().getLore());
         lore.add(Component.empty());
+        int sectionStart = lore.size();
         switch (state.kind()) {
             case TEAM_LEVEL:
                 if (state.ladder() != null) {
@@ -104,7 +105,9 @@ public final class UpgradeShopRenderer {
             default:
                 break; // UNAVAILABLE
         }
-        lore.add(Component.empty());
+        if (lore.size() > sectionStart) { // a maxed single-tier item has no tier/cost lines, no second blank line then
+            lore.add(Component.empty());
+        }
         lore.add(statusLine(state, viewer, game));
         event.setStack(info.getStack().withItemLore(lore));
         return true;
