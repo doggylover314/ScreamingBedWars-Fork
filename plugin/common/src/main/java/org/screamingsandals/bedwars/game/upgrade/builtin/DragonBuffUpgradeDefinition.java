@@ -24,7 +24,9 @@ import lombok.RequiredArgsConstructor;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.screamingsandals.bedwars.api.game.upgrade.Upgradable;
+import org.screamingsandals.bedwars.game.GameImpl;
 import org.screamingsandals.bedwars.game.TeamImpl;
+import org.screamingsandals.bedwars.game.endgame.GameEndgameService;
 import org.screamingsandals.bedwars.lib.debug.Debug;
 import org.spongepowered.configurate.ConfigurateException;
 import org.spongepowered.configurate.ConfigurationNode;
@@ -79,6 +81,17 @@ public class DragonBuffUpgradeDefinition implements BuiltInUpgradeDefinition {
                     .extraDragonsFor((int) Math.floor(upgrade.getLevel() - upgrade.getInitialLevel() + 1e-9));
         }
         return Math.max(0, extra);
+    }
+
+    /**
+     * Sudden death reads the Dragon Buff levels once, when it spawns the dragons. From then on buying the buff would
+     * cost the team resources and change nothing.
+     *
+     * @return true when {@code upgradeName} is a Dragon Buff of the game variant and sudden death already fixed the dragon counts
+     */
+    public static boolean isLockedBySuddenDeath(@NotNull GameImpl game, @NotNull String upgradeName) {
+        return game.getGameVariant().getUpgrade(upgradeName) instanceof DragonBuffUpgradeDefinition
+                && GameEndgameService.getInstance().isDragonBuffLocked(game);
     }
 
     public static class Loader implements BuiltInUpgradeDefinition.Loader<DragonBuffUpgradeDefinition> {

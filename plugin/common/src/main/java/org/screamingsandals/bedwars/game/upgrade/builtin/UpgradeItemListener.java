@@ -29,6 +29,7 @@ import org.screamingsandals.lib.event.OnEvent;
 import org.screamingsandals.lib.event.player.PlayerInventoryClickEvent;
 import org.screamingsandals.lib.event.player.PlayerInventoryCloseEvent;
 import org.screamingsandals.lib.event.player.PlayerInventoryDragEvent;
+import org.screamingsandals.lib.event.player.PlayerLeaveEvent;
 import org.screamingsandals.lib.event.player.PlayerPickupItemEvent;
 import org.screamingsandals.lib.player.Player;
 import org.screamingsandals.lib.tasker.Tasker;
@@ -82,19 +83,34 @@ public class UpgradeItemListener {
         if (!eligible(bw)) {
             return;
         }
-        if (!pending.add(bw.getUniqueId())) {
+        var uuid = bw.getUniqueId();
+        if (!pending.add(uuid)) {
             return;
         }
-        Tasker.runDelayed(bw, () -> {
-            pending.remove(bw.getUniqueId());
-            if (!eligible(bw)) {
-                return;
-            }
-            var team = bw.getGame().getPlayerTeam(bw);
-            if (team != null) {
-                UpgradeItemEnchanter.enchantInventory(bw, team);
-            }
-        }, 1L, TaskerTime.TICKS);
+        try {
+            Tasker.runDelayed(bw, () -> {
+                pending.remove(uuid);
+                if (!eligible(bw)) {
+                    return;
+                }
+                var team = bw.getGame().getPlayerTeam(bw);
+                if (team != null) {
+                    UpgradeItemEnchanter.enchantInventory(bw, team);
+                }
+            }, 1L, TaskerTime.TICKS);
+        } catch (RuntimeException e) {
+            // the entity scheduler is already retired, so the task body will never release the guard
+            pending.remove(uuid);
+            throw e;
+        }
+    }
+
+    /**
+     * The entity scheduler drops its pending tasks when the player disconnects, so the guard has to be released here.
+     */
+    @OnEvent
+    public void onLeave(@NotNull PlayerLeaveEvent event) {
+        pending.remove(event.player().getUniqueId());
     }
 
     private static boolean eligible(@NotNull BedWarsPlayer bw) {

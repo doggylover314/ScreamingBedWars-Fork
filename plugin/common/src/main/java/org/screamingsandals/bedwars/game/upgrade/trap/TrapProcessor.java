@@ -120,6 +120,7 @@ public final class TrapProcessor {
 
             team.getTraps().remove(trap);
             resetLegacyTrapLevel(game, team, trap); // legacy single-use traps become re-buyable
+            UpgradeShopRefresher.refreshTeam(team, null); // after the reset: open upgrade shops must show the re-buyable state
 
             if (trap.getName() != null) { // once per trigger, not once per affected player
                 if (trap.getTeamTitle() != null) {

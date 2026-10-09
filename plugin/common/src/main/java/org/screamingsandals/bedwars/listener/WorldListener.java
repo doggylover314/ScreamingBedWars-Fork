@@ -222,9 +222,21 @@ public class WorldListener {
         }
     }
 
+    /**
+     * Servers add spawn reasons (COMMAND, SPELL, BUCKET, ...) that ScreamingLib's enum does not know, and reading such a reason throws.
+     * Those are never plugin-made (CUSTOM) spawns.
+     */
+    static boolean isCustomSpawn(CreatureSpawnEvent event) {
+        try {
+            return event.spawnReason() == CreatureSpawnEvent.SpawnReason.CUSTOM;
+        } catch (IllegalArgumentException unknownReason) {
+            return false;
+        }
+    }
+
     @OnEvent
     public void onCreatureSpawn(CreatureSpawnEvent event) {
-        if (event.cancelled() || event.spawnReason() == CreatureSpawnEvent.SpawnReason.CUSTOM) {
+        if (event.cancelled() || isCustomSpawn(event)) {
             return;
         }
 
@@ -328,7 +340,7 @@ public class WorldListener {
             return;
         }
         // Fix for uSkyBlock plugin
-        if (event.spawnReason() == CreatureSpawnEvent.SpawnReason.CUSTOM && EntitiesManagerImpl.getInstance().isEntityInGame(event.entity())) {
+        if (isCustomSpawn(event) && EntitiesManagerImpl.getInstance().isEntityInGame(event.entity())) {
             event.cancelled(false);
         }
     }

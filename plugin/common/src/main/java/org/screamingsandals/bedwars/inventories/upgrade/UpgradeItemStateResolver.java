@@ -23,6 +23,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.screamingsandals.bedwars.game.GameImpl;
 import org.screamingsandals.bedwars.game.TeamImpl;
+import org.screamingsandals.bedwars.game.upgrade.builtin.DragonBuffUpgradeDefinition;
 import org.screamingsandals.bedwars.game.upgrade.pricing.LadderResolver;
 import org.screamingsandals.bedwars.game.upgrade.pricing.PriceLadder;
 import org.screamingsandals.bedwars.game.upgrade.pricing.PriceSpec;
@@ -80,8 +81,9 @@ public final class UpgradeItemStateResolver {
             }
             var view = LadderResolver.resolve(upgrade.getLevel(), upgrade.getInitialLevel(), upgrade.getMaximalLevel(),
                     entity.node("levels").getDouble(1), prices, fallback);
-            return new UpgradeItemState(UpgradeItemState.Kind.TEAM_LEVEL, view.maxed() ? PurchaseCheck.MAXED : PurchaseCheck.OK,
-                    view.next(), view, null, 0, 0);
+            var check = view.maxed() ? PurchaseCheck.MAXED
+                    : DragonBuffUpgradeDefinition.isLockedBySuddenDeath(game, name) ? PurchaseCheck.UNAVAILABLE : PurchaseCheck.OK;
+            return new UpgradeItemState(UpgradeItemState.Kind.TEAM_LEVEL, check, view.next(), view, null, 0, 0);
         }
 
         // 3) legacy storage entities only

@@ -25,6 +25,7 @@ import org.screamingsandals.bedwars.events.UpgradeLevelChangeEventImpl;
 import org.screamingsandals.bedwars.events.UpgradeLevelChangedEventImpl;
 import org.screamingsandals.bedwars.game.GameImpl;
 import org.screamingsandals.bedwars.game.TeamImpl;
+import org.screamingsandals.bedwars.game.upgrade.builtin.DragonBuffUpgradeDefinition;
 import org.screamingsandals.bedwars.game.upgrade.pricing.LadderResolver;
 import org.screamingsandals.bedwars.game.upgrade.pricing.PurchaseCheck;
 import org.screamingsandals.bedwars.player.BedWarsPlayer;
@@ -56,6 +57,9 @@ final class TeamLevelAction implements UpgradeAction {
         }
         if (LadderResolver.isMaxed(upgrade.getLevel(), upgrade.getMaximalLevel(), levels)) {
             return PurchaseCheck.MAXED;
+        }
+        if (DragonBuffUpgradeDefinition.isLockedBySuddenDeath(game, upgradeName)) {
+            return PurchaseCheck.UNAVAILABLE; // the dragons are already out, the buff would change nothing
         }
         return PurchaseCheck.OK;
     }
