@@ -27,6 +27,7 @@ import cloud.commandframework.arguments.standard.StringArgument;
 import cloud.commandframework.execution.CommandExecutionHandler;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.screamingsandals.bedwars.api.game.target.Target;
 import org.screamingsandals.bedwars.commands.AdminCommand;
 import org.screamingsandals.bedwars.game.GameImpl;
 import org.screamingsandals.bedwars.game.TeamImpl;
@@ -51,7 +52,9 @@ import org.screamingsandals.lib.spectator.event.HoverEvent;
 import org.screamingsandals.lib.utils.annotations.Service;
 import org.screamingsandals.lib.world.Location;
 
+import java.util.Collection;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
@@ -394,7 +397,7 @@ public class TeamCommand extends BaseAdminSubCommand {
                                             .placeholderRaw("team", team.getName())
                             );
 
-                            if (game.getTeams().stream().anyMatch(a -> !(a.getTarget() instanceof NoTargetImpl))) {
+                            if (hasMixedTargets(game, NoTargetImpl.class)) {
                                 sender.sendMessage(
                                         Message
                                                 .of(LangKeys.ADMIN_ARENA_EDIT_SUCCESS_TARGET_NOT_PROPERLY_BALANCED)
@@ -430,7 +433,7 @@ public class TeamCommand extends BaseAdminSubCommand {
                                             .placeholder("countdown", countdown)
                             );
 
-                            if (game.getTeams().stream().anyMatch(a -> !(a.getTarget() instanceof ExpirableTargetImpl))) {
+                            if (hasMixedTargets(game, ExpirableTargetImpl.class)) {
                                 sender.sendMessage(
                                         Message
                                                 .of(LangKeys.ADMIN_ARENA_EDIT_SUCCESS_TARGET_NOT_PROPERLY_BALANCED)
@@ -520,6 +523,8 @@ public class TeamCommand extends BaseAdminSubCommand {
         team.setMaxPlayers(maxPlayers);
         team.setGame(game);
         game.getTeams().add(team);
+        // generators and shops still linked to a removed team of the same name now belong to the new team
+        SaveCommand.relinkTeamReferences(game, name);
 
         sender.sendMessage(
                 Message
@@ -654,7 +659,7 @@ public class TeamCommand extends BaseAdminSubCommand {
                             .placeholderRaw("material", chosenLoc.getBlock().block().location().asString())
             );
 
-            if (game.getTeams().stream().anyMatch(a -> !(a.getTarget() instanceof TargetBlockImpl))) {
+            if (hasMixedTargets(game, TargetBlockImpl.class)) {
                 sender.sendMessage(
                         Message
                                 .of(LangKeys.ADMIN_ARENA_EDIT_SUCCESS_TARGET_NOT_PROPERLY_BALANCED)
@@ -674,7 +679,7 @@ public class TeamCommand extends BaseAdminSubCommand {
                             .placeholder("countdown", countdown)
             );
 
-            if (game.getTeams().stream().anyMatch(a -> !(a.getTarget() instanceof ExpirableTargetBlockImpl))) {
+            if (hasMixedTargets(game, ExpirableTargetBlockImpl.class)) {
                 sender.sendMessage(
                         Message
                                 .of(LangKeys.ADMIN_ARENA_EDIT_SUCCESS_TARGET_NOT_PROPERLY_BALANCED)
@@ -683,6 +688,18 @@ public class TeamCommand extends BaseAdminSubCommand {
             }
         }
         return true;
+    }
+
+    /**
+     * Whether a team already has a target of another type than {@code type} (the "not balanced" warning). Teams without
+     * a target yet are not a different type, they are just not configured yet.
+     */
+    private static boolean hasMixedTargets(@NotNull GameImpl game, @NotNull Class<? extends Target> type) {
+        return hasMixedTargets(game.getTeams().stream().map(TeamImpl::getTarget).collect(Collectors.toList()), type);
+    }
+
+    static boolean hasMixedTargets(@NotNull Collection<? extends Target> targets, @NotNull Class<? extends Target> type) {
+        return targets.stream().filter(Objects::nonNull).anyMatch(t -> !type.isInstance(t));
     }
 
     public enum TargetBlockSetModes {

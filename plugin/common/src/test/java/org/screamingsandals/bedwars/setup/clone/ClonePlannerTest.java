@@ -158,6 +158,21 @@ class ClonePlannerTest {
     }
 
     @Test
+    void lobbySpawnPointOfAnotherArenaProtectsItsBlock() {
+        // a shared waiting lobby / the main lobby is only a spawn point: no region covers it
+        var spawn = ClonePlanner.spawnObstacle("Other (lobby)", "w", 1050.5, 70.0, 50.5);
+        assertSingleError(ClonePlanner.plan(request("w", 50.5, 95, 50.5, null, "w", 1000, 60, 0, 20_000_000L, spawn)),
+                ClonePlanner.ErrorCode.OVERLAPS_ARENA, "Other (lobby)");
+    }
+
+    @Test
+    void lobbySpawnPointOutsideOrInAnotherWorldDoesNotBlock() {
+        var outside = ClonePlanner.spawnObstacle("Other (lobby)", "w", 1100.5, 70.0, 50.5); // one block behind the target box
+        var elsewhere = ClonePlanner.spawnObstacle("main lobby", "w2", 1050.5, 70.0, 50.5);
+        assertTrue(ClonePlanner.plan(request("w", 50.5, 95, 50.5, null, "w", 1000, 60, 0, 20_000_000L, outside, elsewhere)).ok());
+    }
+
+    @Test
     void pendingCloneTargetsAreReportedSeparately() {
         var obstacle = new ClonePlanner.Obstacle("pending", "w", new BlockBox(1050, 0, 50, 1060, 255, 60), ClonePlanner.ObstacleKind.CLONE_TARGET);
         assertSingleError(ClonePlanner.plan(request("w", 50.5, 95, 50.5, null, "w", 1000, 60, 0, 20_000_000L, obstacle)),

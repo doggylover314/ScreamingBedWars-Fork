@@ -74,6 +74,14 @@ public final class ClonePlanner {
     }
 
     /**
+     * One-block obstacle protecting a lobby spawn point (a shared waiting lobby or the main lobby is often a bare spawn
+     * point without any region, so no arena box covers it).
+     */
+    public static @NotNull Obstacle spawnObstacle(@NotNull String name, @NotNull String world, double x, double y, double z) {
+        return new Obstacle(name, world, BlockBox.ofDoubles(x, y, z, x, y, z), ObstacleKind.LOBBY_REGION);
+    }
+
+    /**
      * @param arenaBox    arena box already clamped to the source world height
      * @param lobbyRegion lobbyPos1/2 (world = lobbyWorld), null unless both are set
      * @param obstacles   excludes the source ARENA box (checked separately)

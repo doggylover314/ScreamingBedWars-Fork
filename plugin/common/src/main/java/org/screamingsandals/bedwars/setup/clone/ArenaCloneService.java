@@ -30,6 +30,7 @@ import org.screamingsandals.bedwars.game.GameImpl;
 import org.screamingsandals.bedwars.game.GameManagerImpl;
 import org.screamingsandals.bedwars.game.LocalGameLoaderImpl;
 import org.screamingsandals.bedwars.lang.ForkLangKeys;
+import org.screamingsandals.bedwars.lobby.MainLobby;
 import org.screamingsandals.bedwars.setup.ArenaNames;
 import org.screamingsandals.bedwars.setup.SetupChecklist;
 import org.screamingsandals.bedwars.setup.SetupOperations;
@@ -41,10 +42,11 @@ import org.screamingsandals.lib.plugin.ServiceManager;
 import org.screamingsandals.lib.sender.CommandSender;
 import org.screamingsandals.lib.utils.annotations.Service;
 import org.screamingsandals.lib.utils.annotations.methods.OnPreDisable;
+import org.screamingsandals.lib.world.Location;
 import org.screamingsandals.lib.world.World;
 import org.screamingsandals.lib.world.Worlds;
+import org.spongepowered.configurate.ConfigurateException;
 import org.spongepowered.configurate.ConfigurationNode;
-import org.spongepowered.configurate.serialize.SerializationException;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -96,6 +98,23 @@ public class ArenaCloneService {
      */
     public boolean isLocked(@NotNull UUID arena) {
         return lockedArenas.contains(arena);
+    }
+
+    /**
+     * Whether a box spanned by {@code a} and {@code b} ({@code b == null}: the single point {@code a}) touches the area
+     * the running clone job is writing to. That area belongs to no registered arena until the job is over, so the
+     * overlap checks of {@code pos1}/{@code pos2} ask here.
+     */
+    public boolean overlapsRunningTarget(@NotNull Location a, @Nullable Location b) {
+        var j = job;
+        if (j == null || a.getWorld() == null || !a.getWorld().getName().equals(j.targetWorldName())) {
+            return false;
+        }
+        var other = b == null ? a : b;
+        var box = BlockBox.ofDoubles(a.getX(), a.getY(), a.getZ(), other.getX(), other.getY(), other.getZ());
+        var plan = j.plan();
+        return box.intersects(plan.targetArenaBox())
+                || (plan.targetLobbyBox() != null && box.intersects(plan.targetLobbyBox()));
     }
 
     // ------------------------------------------------------------------------------------------------ request
@@ -223,6 +242,11 @@ public class ArenaCloneService {
                     source.getLobbyPos2().getX(), source.getLobbyPos2().getY(), source.getLobbyPos2().getZ());
         }
 
+        // the source's own lobby spawn moves with the copy (and is then covered by the source boxes) in the same cases as ClonePlanner
+        boolean sourceSpawnRelocates = lobby.getWorld().getName().equals(sourceWorld.getName())
+                && (arenaBox.containsPoint(lobby.getX(), lobby.getY(), lobby.getZ())
+                || (lobbyRegion != null && lobbyRegion.containsPoint(lobby.getX(), lobby.getY(), lobby.getZ())));
+
         var obstacles = new ArrayList<ClonePlanner.Obstacle>();
         var seen = Collections.newSetFromMap(new IdentityHashMap<GameImpl, Boolean>());
         var others = new ArrayList<GameImpl>(GameManagerImpl.getInstance().getLocalGames());
@@ -233,18 +257,38 @@ public class ArenaCloneService {
             if (!seen.add(g)) {
                 continue;
             }
+            BlockBox gArena = null;
+            BlockBox gLobbyRegion = null;
             if (g != source && g.getWorld() != null && g.getPos1() != null && g.getPos2() != null) {
-                obstacles.add(new ClonePlanner.Obstacle(g.getName(), g.getWorld().getName(),
-                        BlockBox.ofDoubles(g.getPos1().getX(), g.getPos1().getY(), g.getPos1().getZ(),
-                                g.getPos2().getX(), g.getPos2().getY(), g.getPos2().getZ()),
-                        ClonePlanner.ObstacleKind.ARENA));
+                gArena = BlockBox.ofDoubles(g.getPos1().getX(), g.getPos1().getY(), g.getPos1().getZ(),
+                        g.getPos2().getX(), g.getPos2().getY(), g.getPos2().getZ());
+                obstacles.add(new ClonePlanner.Obstacle(g.getName(), g.getWorld().getName(), gArena, ClonePlanner.ObstacleKind.ARENA));
             }
             if (g.getLobbyPos1() != null && g.getLobbyPos2() != null) { // includes the source's own region
-                obstacles.add(new ClonePlanner.Obstacle(g.getName(), g.getLobbyPos1().getWorld().getName(),
-                        BlockBox.ofDoubles(g.getLobbyPos1().getX(), g.getLobbyPos1().getY(), g.getLobbyPos1().getZ(),
-                                g.getLobbyPos2().getX(), g.getLobbyPos2().getY(), g.getLobbyPos2().getZ()),
+                gLobbyRegion = BlockBox.ofDoubles(g.getLobbyPos1().getX(), g.getLobbyPos1().getY(), g.getLobbyPos1().getZ(),
+                        g.getLobbyPos2().getX(), g.getLobbyPos2().getY(), g.getLobbyPos2().getZ());
+                obstacles.add(new ClonePlanner.Obstacle(g.getName(), g.getLobbyPos1().getWorld().getName(), gLobbyRegion,
                         ClonePlanner.ObstacleKind.LOBBY_REGION));
             }
+            // A waiting lobby is often just a spawn point without a region: protect that block too, unless a box above
+            // already covers it (or it moves with the clone)
+            var spawn = g.getLobbySpawn();
+            if (spawn != null && spawn.getWorld() != null) {
+                var spawnWorld = spawn.getWorld().getName();
+                boolean inArena = gArena != null && g.getWorld().getName().equals(spawnWorld)
+                        && gArena.containsPoint(spawn.getX(), spawn.getY(), spawn.getZ());
+                boolean inRegion = gLobbyRegion != null && g.getLobbyPos1().getWorld().getName().equals(spawnWorld)
+                        && gLobbyRegion.containsPoint(spawn.getX(), spawn.getY(), spawn.getZ());
+                boolean covered = g == source ? sourceSpawnRelocates : (inArena || inRegion);
+                if (!covered) {
+                    obstacles.add(ClonePlanner.spawnObstacle(g.getName() + " (lobby)", spawnWorld, spawn.getX(), spawn.getY(), spawn.getZ()));
+                }
+            }
+        }
+        var mainLobby = MainLobby.getLocation();
+        if (mainLobby != null && mainLobby.getWorld() != null) {
+            obstacles.add(ClonePlanner.spawnObstacle("main lobby", mainLobby.getWorld().getName(),
+                    mainLobby.getX(), mainLobby.getY(), mainLobby.getZ()));
         }
 
         var result = ClonePlanner.plan(new ClonePlanner.CloneRequest(
@@ -388,7 +432,7 @@ public class ArenaCloneService {
                     plan.offset(), prepared.targetWorld().getName(), plan.lobbyPolicy(), newUuid.toString(), newName));
             relocation.warnings().forEach(w ->
                     BedWarsPlugin.getInstance().getLogger().warn("Clone {} -> {}: {}", source.getName(), newName, w));
-        } catch (SerializationException e) {
+        } catch (ConfigurateException e) { // includes SerializationException
             BedWarsPlugin.getInstance().getLogger().error("Arena clone: cannot serialize the source arena", e);
             p.sendMessage(Message.of(ForkLangKeys.CLONE_FAILED)
                     .defaultPrefix()
