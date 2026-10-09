@@ -66,4 +66,15 @@ public final class SpawnerCycleMath {
         long newLocal = (t == 0) ? 0 : newCycle - t;
         return rawElapsed - newLocal;
     }
+
+    /**
+     * New countdownDelay for a full restart of the countdown: the next run evaluates the local value 1 (or 0 if the
+     * spawner has not run yet, which keeps "spawn resources on game start" working), so the next spawn happens after one
+     * full cycle.
+     *
+     * @param rawElapsed the spawner's {@code elapsedTime} (value the next run will start from)
+     */
+    public static long restartCountdownDelay(long rawElapsed) {
+        return Math.max(0L, rawElapsed - 1);
+    }
 }

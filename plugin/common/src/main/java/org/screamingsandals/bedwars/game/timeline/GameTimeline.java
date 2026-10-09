@@ -93,7 +93,7 @@ public final class GameTimeline {
             }
             var t1 = definition.intervalTicks(spawner.getItemSpawnerType().configKey(), 1);
             if (t1 != null) {
-                spawner.getLocation().tasker().run(() -> spawner.setIntervalTicks(t1));
+                spawner.getLocation().tasker().run(() -> spawner.restartWithInterval(t1)); // full tier I cycle, not min(old cycle left, tier I)
             }
         }
     }

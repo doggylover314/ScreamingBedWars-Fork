@@ -45,6 +45,44 @@ class SpawnerCycleMathTest {
     }
 
     @Test
+    void restartExamples() {
+        assertEquals(0, SpawnerCycleMath.restartCountdownDelay(0)); // not run yet: local 0, "spawn on game start" still works
+        assertEquals(0, SpawnerCycleMath.restartCountdownDelay(1)); // first tick done: next local value 1
+        assertEquals(6999, SpawnerCycleMath.restartCountdownDelay(7000));
+        assertEquals(0, SpawnerCycleMath.restartCountdownDelay(-5));
+    }
+
+    /**
+     * After a restart the first spawn comes after exactly one full new cycle, regardless of the old cycle (the case
+     * where the new interval is longer than the one the countdown was running with).
+     */
+    @Test
+    void restartWaitsForAFullCycle() {
+        var random = new Random(0x5EEDL);
+        for (int caseNo = 0; caseNo < 2_000; caseNo++) {
+            long raw = 1 + random.nextInt(100_000);
+            long newCycle = 1 + random.nextInt(2000);
+            long delay = SpawnerCycleMath.restartCountdownDelay(raw);
+
+            long simulatedRaw = raw;
+            long runs = 0;
+            while (true) {
+                long local = simulatedRaw - delay;
+                assertTrue(local >= 1, "case " + caseNo);
+                runs++;
+                simulatedRaw++;
+                if (local % newCycle == 0) {
+                    break;
+                }
+            }
+            assertEquals(newCycle, runs, "case " + caseNo + " raw=" + raw + " new=" + newCycle);
+        }
+        // CPS emerald: 60 s spawner type, 65 s at tier I, first tick already run
+        long delay = SpawnerCycleMath.restartCountdownDelay(1);
+        assertEquals(65, SpawnerCycleMath.remainingSeconds(1 - delay, 1300));
+    }
+
+    @Test
     void remainingSecondsRoundsUp() {
         assertEquals(30, SpawnerCycleMath.remainingSeconds(0, 600));
         assertEquals(30, SpawnerCycleMath.remainingSeconds(1, 600));

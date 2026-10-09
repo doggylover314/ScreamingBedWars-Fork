@@ -514,6 +514,22 @@ public class ItemSpawnerImpl implements ItemSpawner, SerializableGameComponent {
     }
 
     /**
+     * Switches to the given interval and restarts the countdown, so the next spawn happens after one full new cycle.
+     * Unlike {@link #changeInterval(Pair)} it does not keep a shorter running countdown (used for tier I at game start).
+     * Must run on the spawner's own thread. No-op if the spawner is not started or disabled.
+     */
+    public void restartWithInterval(long ticks) {
+        if (!started || disabled) {
+            return;
+        }
+
+        this.countdownDelay = SpawnerCycleMath.restartCountdownDelay(this.elapsedTime);
+        this.currentInterval = Pair.of(ticks, TaskerTime.TICKS);
+        this.currentCycle = Math.max(1L, ticks);
+        refreshCountdownHologram();
+    }
+
+    /**
      * Rewrites the countdown line right away (after an interval change) instead of waiting for the next full second.
      */
     private void refreshCountdownHologram() {
