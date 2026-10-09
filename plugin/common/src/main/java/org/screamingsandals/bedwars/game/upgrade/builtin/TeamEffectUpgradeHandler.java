@@ -82,6 +82,10 @@ public class TeamEffectUpgradeHandler {
         if (elapsed % period != 0) {
             return;
         }
+        // nothing to refresh in variants without an effect upgrade (default variant, classic arenas)
+        if (game.getGameVariant().getUpgrades().values().stream().noneMatch(definition -> definition instanceof EffectUpgradeDefinition)) {
+            return;
+        }
         for (var team : game.getTeamsInGame()) {
             List.copyOf(team.getPlayers()).forEach(player -> applyAll(player, team));
         }
