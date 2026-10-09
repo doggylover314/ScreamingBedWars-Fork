@@ -59,7 +59,7 @@ class SetupChecklistTest {
 
         ArenaSetupSnapshot build() {
             return new ArenaSetupSnapshot("Test", "variant", pos1, pos2, lobby, lobbyPos1, lobbyPos2, spec, teams, spawners, stores,
-                    upgrades, variantTypes, List.of("iron", "gold"), "diamond", "emerald", upgradeShopFile, ALL_COLORS);
+                    upgrades, variantTypes, "diamond", "emerald", upgradeShopFile, ALL_COLORS);
         }
 
         B team(String name, String color, int spawns, TargetKind target) {
@@ -184,6 +184,29 @@ class SetupChecklistTest {
         var next = SetupChecklist.nextStep(entries).orElseThrow();
         assertEquals(Item.TEAM_GENERATOR, next.item());
         assertEquals("Blue", next.team());
+    }
+
+    @Test
+    void baseGeneratorOfAnyTypeCountsAsSet() {
+        var b = new B().minimalComplete();
+        b.spawners.add(new SpawnerInfo("bronze", "Red"));
+        b.spawners.add(new SpawnerInfo("iron", "Blue"));
+        b.spawners.add(new SpawnerInfo("gold", "Blue"));
+        var entries = SetupChecklist.evaluate(b.build());
+
+        assertTrue(find(entries, Item.TEAM_GENERATOR, "Red").done());
+        assertTrue(find(entries, Item.TEAM_GENERATOR, "Blue").done());
+    }
+
+    @Test
+    void spawnerWithoutTeamIsNoBaseGenerator() {
+        var b = new B().minimalComplete();
+        b.spawners.add(new SpawnerInfo("iron", null));
+        b.spawners.add(new SpawnerInfo("iron", "Red"));
+        var entries = SetupChecklist.evaluate(b.build());
+
+        assertTrue(find(entries, Item.TEAM_GENERATOR, "Red").done());
+        assertFalse(find(entries, Item.TEAM_GENERATOR, "Blue").done());
     }
 
     @Test

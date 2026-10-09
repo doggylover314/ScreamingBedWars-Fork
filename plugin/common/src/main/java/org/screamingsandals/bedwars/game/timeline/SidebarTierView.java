@@ -35,11 +35,12 @@ public record SidebarTierView(@NotNull Kind kind, @Nullable TimelineEventDefinit
 
     /**
      * @param state            runtime state, null when the game has no timeline runtime
-     * @param running          whether the game is in the RUNNING status
+     * @param running          whether the game is in the RUNNING status; the timeline game end counts as the end of the game
+     *                         even while the status still reads RUNNING (the sidebar task runs asynchronously)
      * @param countdownSeconds seconds left until the arena time limit ends the game; &lt;= 0 = no time limit known
      */
     public static @NotNull SidebarTierView resolve(@Nullable TimelineState state, boolean running, long countdownSeconds) {
-        if (!running) {
+        if (!running || (state != null && state.hasFiredGameEnd())) {
             return new SidebarTierView(Kind.GAME_OVER, null, 0);
         }
         var next = state == null ? null : state.peekNextVisible();

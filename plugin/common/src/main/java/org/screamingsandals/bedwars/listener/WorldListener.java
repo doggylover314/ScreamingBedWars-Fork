@@ -224,19 +224,36 @@ public class WorldListener {
 
     /**
      * Servers add spawn reasons (COMMAND, SPELL, BUCKET, ...) that ScreamingLib's enum does not know, and reading such a reason throws.
-     * Those are never plugin-made (CUSTOM) spawns.
+     *
+     * @return the spawn reason or null when ScreamingLib cannot map it
+     */
+    private static CreatureSpawnEvent.SpawnReason spawnReasonOrNull(CreatureSpawnEvent event) {
+        try {
+            return event.spawnReason();
+        } catch (IllegalArgumentException unknownReason) {
+            return null;
+        }
+    }
+
+    /**
+     * Only plugin-made (CUSTOM) spawns. A reason unknown to ScreamingLib is never reported as CUSTOM.
      */
     static boolean isCustomSpawn(CreatureSpawnEvent event) {
-        try {
-            return event.spawnReason() == CreatureSpawnEvent.SpawnReason.CUSTOM;
-        } catch (IllegalArgumentException unknownReason) {
-            return false;
-        }
+        return spawnReasonOrNull(event) == CreatureSpawnEvent.SpawnReason.CUSTOM;
+    }
+
+    /**
+     * Spawns the mob prevention must not touch: plugin-made (CUSTOM) spawns and spawns whose reason ScreamingLib cannot map
+     * (e.g. COMMAND from an admin's /summon), which we cannot classify as a natural spawn.
+     */
+    static boolean isIgnoredSpawn(CreatureSpawnEvent event) {
+        var reason = spawnReasonOrNull(event);
+        return reason == null || reason == CreatureSpawnEvent.SpawnReason.CUSTOM;
     }
 
     @OnEvent
     public void onCreatureSpawn(CreatureSpawnEvent event) {
-        if (event.cancelled() || isCustomSpawn(event)) {
+        if (event.cancelled() || isIgnoredSpawn(event)) {
             return;
         }
 

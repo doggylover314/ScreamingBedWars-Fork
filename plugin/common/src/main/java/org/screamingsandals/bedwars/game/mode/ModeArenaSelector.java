@@ -69,9 +69,21 @@ public final class ModeArenaSelector {
     }
 
     static boolean isIdleCandidate(ArenaSnapshot a, ModeDefinition mode) {
-        return a.state() == ArenaState.WAITING && a.players() == 0 && a.activeModeId() == null
-                && a.teamCount() == mode.teamCount() && a.allowedTeamSizes().contains(mode.teamSize())
-                && mode.allowsArena(a.name());
+        return a.state() == ArenaState.WAITING && a.players() == 0 && a.activeModeId() == null && isConfiguredFor(a, mode);
+    }
+
+    /**
+     * Whether the arena could serve the mode at all, whatever it is doing right now (team count, allowed team sizes, whitelist).
+     */
+    static boolean isConfiguredFor(ArenaSnapshot a, ModeDefinition mode) {
+        return a.teamCount() == mode.teamCount() && a.allowedTeamSizes().contains(mode.teamSize()) && mode.allowsArena(a.name());
+    }
+
+    /**
+     * False when no arena is set up for the mode, i.e. waiting for a free arena can never help.
+     */
+    public static boolean hasConfiguredArena(@NotNull List<ArenaSnapshot> arenas, @NotNull ModeDefinition mode) {
+        return arenas.stream().anyMatch(a -> isConfiguredFor(a, mode));
     }
 
     /**

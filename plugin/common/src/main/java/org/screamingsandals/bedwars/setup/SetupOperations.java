@@ -56,7 +56,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.function.BiConsumer;
-import java.util.stream.Collectors;
 
 /**
  * Runtime helpers of {@code /bw setup} and {@code /bw set} (platform-bound, not unit-tested; the logic that can be
@@ -203,7 +202,6 @@ public final class SetupOperations {
                 stores,
                 variant != null && !variant.getUpgrades().isEmpty(),
                 variantTypes,
-                lower(cc.getOrDefault(SetupConfigKeys.TEAM_GENERATOR_TYPES, SetupConfigKeys.DEFAULT_TEAM_GENERATOR_TYPES)),
                 cc.getOrDefault(SetupConfigKeys.DIAMOND_SPAWNER_TYPE, "diamond").toLowerCase(Locale.ROOT),
                 cc.getOrDefault(SetupConfigKeys.EMERALD_SPAWNER_TYPE, "emerald").toLowerCase(Locale.ROOT),
                 resolveUpgradeShopFile(g),
@@ -228,10 +226,6 @@ public final class SetupOperations {
             return TargetKind.NO_TARGET;
         }
         return TargetKind.BLOCK;
-    }
-
-    private static @NotNull List<String> lower(@NotNull List<String> values) {
-        return values.stream().map(v -> v.toLowerCase(Locale.ROOT)).collect(Collectors.toList());
     }
 
     /**

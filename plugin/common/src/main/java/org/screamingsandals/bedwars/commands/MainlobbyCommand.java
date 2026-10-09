@@ -53,11 +53,8 @@ public class MainlobbyCommand extends BaseCommand {
                         try {
                             MainLobby.setEnabled(true);
 
-                            Message
-                                    .of(LangKeys.SUCCESS)
-                                    .join(LangKeys.ADMIN_MAINLOBBY_INFO)
-                                    .defaultPrefix()
-                                    .send(sender);
+                            // MainLobby reads the config live, no /bw reload needed (unlike upstream, see ADMIN_MAINLOBBY_INFO)
+                            sender.sendMessage(Message.of(LangKeys.SUCCESS).defaultPrefix());
                         } catch (SerializationException e) {
                             e.printStackTrace();
                         }

@@ -55,4 +55,21 @@ class WorldListenerSpawnReasonTest {
         // the platform event does SpawnReason.valueOf(name), which throws for COMMAND, SPELL, BUCKET, ...
         assertFalse(WorldListener.isCustomSpawn(eventWithReason(() -> CreatureSpawnEvent.SpawnReason.valueOf("COMMAND_NOT_IN_ENUM"))));
     }
+
+    @Test
+    void customSpawnIsIgnoredByTheMobPrevention() {
+        assertTrue(WorldListener.isIgnoredSpawn(eventWithReason(() -> CreatureSpawnEvent.SpawnReason.CUSTOM)));
+    }
+
+    @Test
+    void knownNonCustomReasonsAreNotIgnoredByTheMobPrevention() {
+        assertFalse(WorldListener.isIgnoredSpawn(eventWithReason(() -> CreatureSpawnEvent.SpawnReason.NATURAL)));
+        assertFalse(WorldListener.isIgnoredSpawn(eventWithReason(() -> CreatureSpawnEvent.SpawnReason.SPAWNER_EGG)));
+    }
+
+    @Test
+    void reasonUnknownToTheLibraryIsIgnoredByTheMobPreventionAndDoesNotThrow() {
+        // e.g. an admin's /summon (COMMAND) must not be removed from the arena
+        assertTrue(WorldListener.isIgnoredSpawn(eventWithReason(() -> CreatureSpawnEvent.SpawnReason.valueOf("COMMAND_NOT_IN_ENUM"))));
+    }
 }

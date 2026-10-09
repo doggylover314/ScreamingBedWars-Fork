@@ -28,6 +28,7 @@ import java.util.Random;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -202,5 +203,25 @@ class ModeArenaSelectorTest {
         sizes.add(5);
         assertEquals(List.of(1, 2), snapshot.groupSizes());
         assertTrue(snapshot.preferredTeamSizes().isEmpty());
+    }
+
+    @Test
+    void configuredArenaIsFoundWhateverItIsDoing() {
+        var busy = other("Busy", ArenaState.BUSY, 4, "4v4");
+        var off = other("Off", ArenaState.UNAVAILABLE, 0, null);
+        assertTrue(ModeArenaSelector.hasConfiguredArena(List.of(busy), MODE_4V4));
+        assertTrue(ModeArenaSelector.hasConfiguredArena(List.of(off), MODE_2V2));
+        assertTrue(ModeArenaSelector.hasConfiguredArena(List.of(idle("Idle")), MODE_3V3));
+    }
+
+    @Test
+    void noArenaIsConfiguredWhenTeamCountSizeOrWhitelistNeverMatch() {
+        var mode = new ModeDefinition("3v3v3", "3v3v3", 3, 3, 9, List.of());
+        var twoTeams = idle("Two", 2, Set.of(1, 2, 3, 4), Set.of());
+        var fourTeams = idle("Four", 4, Set.of(1, 2, 3, 4), Set.of());
+        assertFalse(ModeArenaSelector.hasConfiguredArena(List.of(twoTeams, fourTeams), mode));
+        assertFalse(ModeArenaSelector.hasConfiguredArena(List.of(idle("Sizes", 2, Set.of(1, 2), Set.of())), MODE_4V4));
+        assertFalse(ModeArenaSelector.hasConfiguredArena(List.of(idle("X")), new ModeDefinition("4v4", "4v4", 2, 4, 8, List.of("Y"))));
+        assertFalse(ModeArenaSelector.hasConfiguredArena(List.of(), MODE_4V4));
     }
 }

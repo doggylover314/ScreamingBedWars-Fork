@@ -92,6 +92,17 @@ config:
       - leather_chestplate
       - leather_leggings
       - leather_boots
+  # Hypixel respawn kit: after a death the player gets the wooden sword and the leather armor back. Armor pieces are put into
+  # their armor slots (never added to the inventory), and items bought later (permanent items) or keep-armor-on-death
+  # are applied after the kit, so no armor is duplicated.
+  player-respawn-items:
+    enabled: true
+    items:
+      - wooden_sword
+      - leather_helmet
+      - leather_chestplate
+      - leather_leggings
+      - leather_boots
   destroy-placed-blocks-by-explosion:
     enabled: true
     blacklist:

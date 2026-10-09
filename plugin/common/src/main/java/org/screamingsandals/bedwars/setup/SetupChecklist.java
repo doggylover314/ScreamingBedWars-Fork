@@ -93,9 +93,9 @@ public final class SetupChecklist {
                     "/bw set spawn " + t.name()));
             entries.add(new Entry(Item.TEAM_TARGET, Severity.REQUIRED, t.target() != ArenaSetupSnapshot.TargetKind.NONE_SET, t.name(), 0,
                     "/bw set bed " + t.name()));
+            // any team-linked spawner counts: the expected types depend on the variant (bronze, or iron + gold)
             boolean hasGenerator = s.spawners().stream().anyMatch(sp -> sp.team() != null
-                    && sp.team().equalsIgnoreCase(t.name())
-                    && s.teamGeneratorTypes().contains(sp.type()));
+                    && sp.team().equalsIgnoreCase(t.name()));
             entries.add(new Entry(Item.TEAM_GENERATOR, upgradesSeverity, hasGenerator, t.name(), 0,
                     "/bw set generator " + t.name()));
             if (anyStoreLinked) {

@@ -85,4 +85,14 @@ class CertainPopularServerPinsTest {
                 .map(ConfigurationNode::getString)
                 .toList());
     }
+
+    @Test
+    void givesTheStarterKitBackOnRespawn() throws IOException {
+        var config = load().node("config");
+        assertTrue(config.node("player-respawn-items", "enabled").getBoolean(false));
+        var kit = config.node("player-respawn-items", "items").childrenList().stream().map(ConfigurationNode::getString).toList();
+        assertEquals(List.of("wooden_sword", "leather_helmet", "leather_chestplate", "leather_leggings", "leather_boots"), kit);
+        // the respawn kit is the starter kit
+        assertEquals(config.node("game-start-items", "items").childrenList().stream().map(ConfigurationNode::getString).toList(), kit);
+    }
 }
