@@ -32,13 +32,13 @@ import org.spongepowered.configurate.ConfigurationNode;
 import java.util.ArrayList;
 
 /**
- * Team upgrade that gives the team extra ender dragons in sudden death.
- * The sudden-death code reads the bought level through {@link #getExtraDragons(TeamImpl)}.
+ * Team upgrade that boosts the team's resource generators (Iron / Gold / Emerald / Molten Forge).
+ * Applied by {@link ForgeUpgradeHandler}.
  */
 @Getter
 @RequiredArgsConstructor
-public class DragonBuffUpgradeDefinition implements BuiltInUpgradeDefinition {
-    private final @NotNull DragonBuffSpec spec;
+public class ForgeUpgradeDefinition implements BuiltInUpgradeDefinition {
+    private final @NotNull ForgeSpec spec;
 
     @Override
     public double getInitialLevel() {
@@ -55,41 +55,15 @@ public class DragonBuffUpgradeDefinition implements BuiltInUpgradeDefinition {
         return upgradable instanceof TeamImpl;
     }
 
-    /**
-     * Extra sudden-death dragons the team gets from its Dragon Buff upgrade.
-     * Sudden death spawns {@code 1 + getExtraDragons(team)} dragons per alive team.
-     *
-     * @return the number of extra dragons; 0 if none were bought or the variant has no dragon-buff upgrade
-     */
-    public static int getExtraDragons(@NotNull TeamImpl team) {
-        var game = team.getGame();
-        if (game == null) {
-            return 0;
-        }
-        int extra = 0;
-        for (var entry : game.getGameVariant().getUpgrades().entrySet()) {
-            if (!(entry.getValue() instanceof DragonBuffUpgradeDefinition)) {
-                continue;
-            }
-            var upgrade = team.getUpgrade(entry.getKey());
-            if (upgrade == null) {
-                continue;
-            }
-            extra += ((DragonBuffUpgradeDefinition) entry.getValue()).getSpec()
-                    .extraDragonsFor((int) Math.floor(upgrade.getLevel() - upgrade.getInitialLevel() + 1e-9));
-        }
-        return Math.max(0, extra);
-    }
-
-    public static class Loader implements BuiltInUpgradeDefinition.Loader<DragonBuffUpgradeDefinition> {
+    public static class Loader implements BuiltInUpgradeDefinition.Loader<ForgeUpgradeDefinition> {
         public static final @NotNull Loader INSTANCE = new Loader();
 
         @Override
-        public @NotNull DragonBuffUpgradeDefinition load(@NotNull ConfigurationNode node) throws ConfigurateException {
+        public @NotNull ForgeUpgradeDefinition load(@NotNull ConfigurationNode node) throws ConfigurateException {
             var warnings = new ArrayList<String>();
-            var spec = DragonBuffSpec.parse(node, warnings);
-            warnings.forEach(w -> Debug.warn("Dragon buff upgrade " + node.key() + ": " + w, true));
-            return new DragonBuffUpgradeDefinition(spec);
+            var spec = ForgeSpec.parse(node, warnings);
+            warnings.forEach(w -> Debug.warn("Forge upgrade " + node.key() + ": " + w, true));
+            return new ForgeUpgradeDefinition(spec);
         }
     }
 }

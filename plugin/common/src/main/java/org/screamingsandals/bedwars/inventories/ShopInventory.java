@@ -28,19 +28,21 @@ import org.screamingsandals.bedwars.BedWarsPlugin;
 import org.screamingsandals.bedwars.api.PurchaseType;
 import org.screamingsandals.bedwars.api.config.GameConfigurationContainer;
 import org.screamingsandals.bedwars.api.events.OpenShopEvent;
-import org.screamingsandals.bedwars.api.game.ItemSpawner;
+import org.screamingsandals.bedwars.api.game.GameStatus;
 import org.screamingsandals.bedwars.api.game.StoreManager;
 import org.screamingsandals.bedwars.api.player.BWPlayer;
 import org.screamingsandals.bedwars.commands.DumpCommand;
 import org.screamingsandals.bedwars.config.MainConfig;
 import org.screamingsandals.bedwars.events.*;
-import org.screamingsandals.bedwars.api.game.ItemSpawnerType;
 import org.screamingsandals.bedwars.api.upgrades.Upgrade;
 import org.screamingsandals.bedwars.api.upgrades.UpgradeRegistry;
 import org.screamingsandals.bedwars.api.upgrades.UpgradeStorage;
 import org.screamingsandals.bedwars.game.GameImpl;
 import org.screamingsandals.bedwars.game.ItemSpawnerTypeImpl;
 import org.screamingsandals.bedwars.game.TeamImpl;
+import org.screamingsandals.bedwars.game.upgrade.builtin.UpgradeItemEnchanter;
+import org.screamingsandals.bedwars.inventories.upgrade.UpgradeShopHandler;
+import org.screamingsandals.bedwars.inventories.upgrade.UpgradeShopRenderer;
 import org.screamingsandals.bedwars.lang.LangKeys;
 import org.screamingsandals.bedwars.player.BedWarsPlayer;
 import org.screamingsandals.bedwars.player.PlayerManagerImpl;
@@ -60,6 +62,7 @@ import org.screamingsandals.lib.utils.ResourceLocation;
 import org.screamingsandals.lib.utils.annotations.Service;
 import org.screamingsandals.lib.utils.annotations.ServiceDependencies;
 import org.screamingsandals.lib.utils.annotations.methods.OnPostEnable;
+import org.screamingsandals.lib.utils.annotations.methods.OnPreDisable;
 import org.screamingsandals.lib.utils.annotations.parameters.DataFolder;
 import org.screamingsandals.lib.utils.logger.Logger;
 import org.screamingsandals.simpleinventories.SimpleInventoriesCore;
@@ -92,6 +95,18 @@ public class ShopInventory implements StoreManager {
 
     public static @NotNull ShopInventory getInstance() {
         return ServiceManager.get(ShopInventory.class);
+    }
+
+    /**
+     * All loaded shop inventory sets (used to refresh open upgrade shops).
+     */
+    public @NotNull Collection<InventorySet> getLoadedShops() {
+        return Collections.unmodifiableCollection(shopMap.values());
+    }
+
+    @OnPreDisable
+    public void onPreDisable() {
+        shopMap.clear(); // per-file shops (for example upgrade-shop.yml) were never reloaded by /bw reload
     }
 
     @OnPostEnable
@@ -171,14 +186,15 @@ public class ShopInventory implements StoreManager {
 
     public void onGeneratingItem(@NotNull ItemRenderEvent event) {
         var itemInfo = event.getItem();
-        var item = itemInfo.getStack();
+        boolean upgradeLoreRendered = UpgradeShopRenderer.render(event); // may replace the stack (dynamic upgrade lore)
+        var item = itemInfo.getStack(); // read AFTER the renderer
         var game = playerManager.getGameOfPlayer(event.getPlayer());
         var prices = itemInfo.getOriginal().getPrices();
-        if (!prices.isEmpty()) {
+        if (!prices.isEmpty() && !upgradeLoreRendered && game.isPresent()) { // no orElseThrow for players outside games
             // TODO: multi-price feature
             var priceObject = prices.get(0);
             var price = priceObject.getAmount();
-            var type = game.orElseThrow().getGameVariant().getItemSpawnerType(priceObject.getCurrency());
+            var type = game.get().getGameVariant().getItemSpawnerType(priceObject.getCurrency());
             if (type == null) {
                 return;
             }
@@ -540,6 +556,13 @@ public class ShopInventory implements StoreManager {
                 EventManager.fire(applyEvent);
             }
 
+            if (mainConfig.node("upgrades", "enchant-items", "on-buy").getBoolean(true)) {
+                var buyerTeam = game.getPlayerTeam(playerManager.getPlayer(event.getPlayer().getUuid()).orElseThrow());
+                if (buyerTeam != null && game.getStatus() == GameStatus.RUNNING) {
+                    newItem = UpgradeItemEnchanter.enchant(buyerTeam, newItem); // team enchantment upgrades on bought items
+                }
+            }
+
             event.sellStack(materialItem);
             if (event.isHasAnyExecutions()) {
                 event.setRunExecutions(true); // SIv2 will handle that when this is set to true
@@ -580,245 +603,8 @@ public class ShopInventory implements StoreManager {
         }
     }
 
-    // TODO: refactor this method!!!!! It's full of bugs
     private void handleUpgrade(@NotNull OnTradeEvent event) {
-        var player = event.getPlayer().as(BedWarsPlayer.class);
-        var game = player.getGame();
-        var itemInfo = event.getItem();
-
-        // TODO: multi-price feature
-        // TODO: dynamic prices required for enchant upgrades
-        var price = event.getPrices().get(0);
-        ItemSpawnerTypeImpl type = game.getGameVariant().getItemSpawnerType(price.getCurrency());
-
-        var priceAmount = price.getAmount();
-
-        var upgrade = itemInfo.getFirstPropertyByName("upgrade").orElseThrow();
-        var itemName = upgrade.getPropertyData().node("shop-name").getString(Message.of(LangKeys.IN_GAME_SHOP_UPGRADE_TRANSLATE).asComponent(event.getPlayer()).toLegacy());
-        var entities = upgrade.getPropertyData().node("entities").childrenList();
-
-        boolean sendToAll = false;
-        boolean isUpgrade = true;
-        double maxLevel = 0.0;
-        double newLevel = 0.0;
-        var materialItem = type.getItem(priceAmount);
-
-        if (event.hasPlayerInInventory(materialItem)) {
-            final var upgradePurchasedEvent  = new StorePrePurchaseEventImpl(game, playerManager.getPlayer(event.getPlayer().getUuid()).orElseThrow(), materialItem, null, type, PurchaseType.UPGRADES, event);
-            EventManager.fire(upgradePurchasedEvent);
-            if (upgradePurchasedEvent.isCancelled()) return;
-
-            for (var entity : entities) {
-                var configuredType = entity.node("type").getString();
-                if (configuredType == null) {
-                    return;
-                }
-
-                if ("team".equalsIgnoreCase(configuredType)) {
-                    var team = game.getTeamOfPlayer(player);
-                    var upgradeName = entity.node("upgrade-name").getString();
-                    var levels = entity.node("levels").getDouble(1);
-                    if (upgradeName == null) {
-                        logger.warn("Upgrade configuration is invalid, team upgrade name is missing!");
-                        return;
-                    }
-
-                    var teamUpgrade = team.getUpgrade(upgradeName);
-                    if (teamUpgrade == null) {
-                        logger.warn("Upgrade configuration is invalid, team upgrade name {} is not registered!", upgradeName);
-                        return;
-                    }
-
-                    /* You shouldn't use it in entities */
-                    itemName = entity.node("shop-name").getString(itemName);
-                    sendToAll = entity.node("notify-team").getBoolean(sendToAll);
-
-                    var maximalLevel = teamUpgrade.getMaximalLevel();
-                    if (maximalLevel != null && maximalLevel < levels + teamUpgrade.getLevel()) {
-                        Message.of(LangKeys.IN_GAME_SPAWNER_REACHED_MAXIMUM_LEVEL) // TODO: this is not actually a spawner, but a generic upgrade
-                                .prefixOrDefault(game.getCustomPrefixComponent())
-                                .placeholder("item", itemName)
-                                .placeholder("material", price + " " + type.getItemName())
-                                .placeholder("max_level", teamUpgrade.getMaximalLevel())
-                                .send(player);
-                        return;
-                    }
-
-                    var level = teamUpgrade.getLevel();
-                    teamUpgrade.increaseLevel(levels);
-
-                    var changeEvent = new UpgradeLevelChangeEventImpl(game, team, upgradeName, teamUpgrade, level, teamUpgrade.getLevel());
-                    EventManager.fire(changeEvent);
-
-                    if (changeEvent.isCancelled()) {
-                        teamUpgrade.setLevel(level);
-                        // TODO: error message
-                        return;
-                    }
-
-                    event.sellStack(materialItem);
-                    newLevel = changeEvent.getNewLevel();
-
-                    var changedEvent = new UpgradeLevelChangedEventImpl(game, team, upgradeName, teamUpgrade, level);
-                    EventManager.fire(changedEvent);
-                }
-
-                // TODO: refactor the rest to the new API
-                var upgradeStorage = UpgradeRegistry.getUpgrade(configuredType);
-                if (upgradeStorage != null) {
-
-                    // variables
-                    var team = game.getTeamOfPlayer(player);
-                    double addLevels = entity.node("add-levels").getDouble(entity.node("levels").getDouble(0));
-                    /* You shouldn't use it in entities */
-                    itemName = entity.node("shop-name").getString(itemName);
-                    sendToAll = entity.node("notify-team").getBoolean(sendToAll);
-                    maxLevel = entity.node("max-level").getDouble();
-
-                    List<Upgrade> upgrades = new ArrayList<>();
-
-                    var spawnerNameNode = entity.node("spawner-name");
-                    var spawnerTypeNode = entity.node("spawner-type");
-                    var teamUpgradeNode = entity.node("team-upgrade");
-                    var customNameNode = entity.node("customName");
-
-                    if (!spawnerNameNode.empty()) {
-                        String customName = spawnerNameNode.getString();
-                        upgrades = upgradeStorage.findItemSpawnerUpgrades(game, customName);
-                    } else if (!spawnerTypeNode.empty()) {
-                        List<ItemSpawnerType> types = new ArrayList<>();
-                        if (spawnerTypeNode.isList()) {
-                            for (var child : spawnerTypeNode.childrenList()) {
-                                String mapSpawnerType = child.getString();
-                                ItemSpawnerType spawnerType = game.getGameVariant().getItemSpawnerType(mapSpawnerType);
-                                types.add(spawnerType);
-
-                                upgrades.addAll(upgradeStorage.findItemSpawnerUpgrades(game, team, spawnerType));
-                            }
-                        } else {
-                            String mapSpawnerType = spawnerTypeNode.getString();
-                            ItemSpawnerType spawnerType = game.getGameVariant().getItemSpawnerType(mapSpawnerType);
-                            types.add(spawnerType);
-
-                            upgrades = upgradeStorage.findItemSpawnerUpgrades(game, team, spawnerType);
-                        }
-
-                        if (upgrades.isEmpty() && entity.node("auto-discover-spawners-if-not-linked").getBoolean()) {
-                            for (var spawnerType : types) {
-                                double closestDistance = Double.MAX_VALUE;
-                                ItemSpawner closestSpawner = null;
-                                for (var spawner : game.getItemSpawners()) {
-                                    if (spawner.getItemSpawnerType().toSpawnerType(game) == spawnerType) {
-                                        double distance = team.getRandomSpawn().getDistanceSquared(spawner.getLocation());
-                                        if (distance < closestDistance) {
-                                            closestDistance = distance;
-                                            closestSpawner = spawner;
-                                        }
-
-                                    }
-                                }
-                                if (closestSpawner != null) {
-                                    upgrades.add(closestSpawner);
-                                }
-                            }
-                        }
-                    } else if (!teamUpgradeNode.empty()) {
-                        boolean upgradeAllSpawnersInTeam = teamUpgradeNode.getBoolean();
-
-                        if (upgradeAllSpawnersInTeam) {
-                            upgrades = upgradeStorage.findItemSpawnerUpgrades(game, team);
-                        }
-
-                    } else if (!customNameNode.empty()) { // Old configuration
-                        String customName = customNameNode.getString();
-                        upgrades = upgradeStorage.findItemSpawnerUpgrades(game, customName);
-                    } else {
-                        isUpgrade = false;
-                        logger.warn("Spawner upgrade configuration is invalid.");
-                    }
-
-                    if (isUpgrade) {
-                        for (var up : upgrades) {
-                            if (up.getLevel() + addLevels > maxLevel && maxLevel > 0) {
-                                Message.of(LangKeys.IN_GAME_SPAWNER_REACHED_MAXIMUM_LEVEL)
-                                        .prefixOrDefault(game.getCustomPrefixComponent())
-                                        .placeholder("item", itemName)
-                                        .placeholder("material", price + " " + type.getItemName())
-                                        .placeholder("max_level", maxLevel)
-                                        .send(player);
-                                return;
-                            }
-                        }
-
-                        event.sellStack(materialItem);
-                        var bedwarsUpgradeBoughtEvent = new UpgradeBoughtEventImpl(game, playerManager.getPlayer(player.getUuid()).orElseThrow(), upgrades, addLevels, upgradeStorage);
-                        EventManager.fire(bedwarsUpgradeBoughtEvent);
-
-                        if (bedwarsUpgradeBoughtEvent.isCancelled()) {
-                            continue;
-                        }
-
-                        if (upgrades.isEmpty()) {
-                            continue;
-                        }
-
-                        for (var anUpgrade : upgrades) {
-                            newLevel = anUpgrade.getLevel() + addLevels;
-                            var improvedEvent = new UpgradeImprovedEventImpl(game, anUpgrade, upgradeStorage, anUpgrade.getLevel(), newLevel);
-                            improvedEvent.setNewLevel(anUpgrade.getLevel() + addLevels);
-                            EventManager.fire(improvedEvent);
-                        }
-                    }
-                }
-
-                if (sendToAll) {
-                    for (var player1 : game.getPlayerTeam(player).getPlayers()) {
-                        if (!mainConfig.node("removeUpgradeMessages").getBoolean()) {
-                            Message.of(LangKeys.IN_GAME_SHOP_UPGRADE_SUCCESS)
-                                    .prefixOrDefault(game.getCustomPrefixComponent())
-                                    .placeholder("name", player.getDisplayName())
-                                    .placeholder("spawner", itemName)
-                                    .placeholder("level", newLevel)
-                                    .send(player1);
-                        }
-                        player.playSound(SoundStart.sound(
-                                ResourceLocation.of(mainConfig.node("sounds", "upgrade_buy", "sound").getString("entity.experience_orb.pickup")),
-                                SoundSource.PLAYER,
-                                (float) MainConfig.getInstance().node("sounds", "upgrade_buy", "volume").getDouble(),
-                                (float) MainConfig.getInstance().node("sounds", "upgrade_buy", "pitch").getDouble()
-                        ));
-                    }
-                } else {
-                    if (!mainConfig.node("removeUpgradeMessages").getBoolean()) {
-                        Message.of(LangKeys.IN_GAME_SHOP_UPGRADE_SUCCESS)
-                                .prefixOrDefault(game.getCustomPrefixComponent())
-                                .placeholder("name", player.getDisplayName())
-                                .placeholder("spawner", itemName)
-                                .placeholder("level", newLevel)
-                                .send(event.getPlayer());
-                    }
-                    player.playSound(SoundStart.sound(
-                            ResourceLocation.of(mainConfig.node("sounds", "upgrade_buy", "sound").getString("entity.experience_orb.pickup")),
-                            SoundSource.PLAYER,
-                            (float) MainConfig.getInstance().node("sounds", "upgrade_buy", "volume").getDouble(),
-                            (float) MainConfig.getInstance().node("sounds", "upgrade_buy", "pitch").getDouble()
-                    ));
-                }
-            }
-            EventManager.fire(new StorePostPurchaseEventImpl(game, playerManager.getPlayer(event.getPlayer().getUuid()).orElseThrow(), PurchaseType.UPGRADES, event));
-        } else {
-            final var purchaseFailedEvent = new PurchaseFailedEventImpl(game, playerManager.getPlayer(event.getPlayer().getUuid()).orElseThrow(), PurchaseType.UPGRADES, event);
-            EventManager.fire(purchaseFailedEvent);
-            if (purchaseFailedEvent.isCancelled()) return;
-
-            if (!mainConfig.node("removePurchaseFailedMessages").getBoolean()) {
-                Message.of(LangKeys.IN_GAME_SHOP_BUY_FAILED)
-                        .prefixOrDefault(game.getCustomPrefixComponent())
-                        .placeholder("item", itemName)
-                        .placeholder("material", Component.text(priceAmount + " ").withAppendix(type.getItemName()))
-                        .send(event.getPlayer());
-            }
-        }
+        UpgradeShopHandler.handle(event);
     }
 
     @Override

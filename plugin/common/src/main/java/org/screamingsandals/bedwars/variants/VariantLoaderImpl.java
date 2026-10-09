@@ -26,8 +26,13 @@ import org.screamingsandals.bedwars.api.variants.VariantLoader;
 import org.screamingsandals.bedwars.game.ItemSpawnerTypeImpl;
 import org.screamingsandals.bedwars.game.timeline.TimelineVariantLoader;
 import org.screamingsandals.bedwars.game.upgrade.builtin.BuiltInUpgradeDefinition;
+import org.screamingsandals.bedwars.game.upgrade.builtin.DragonBuffUpgradeDefinition;
+import org.screamingsandals.bedwars.game.upgrade.builtin.EffectUpgradeDefinition;
 import org.screamingsandals.bedwars.game.upgrade.builtin.EnchantmentUpgradeDefinition;
+import org.screamingsandals.bedwars.game.upgrade.builtin.ForgeUpgradeDefinition;
 import org.screamingsandals.bedwars.game.upgrade.builtin.TrapUpgradeDefinition;
+import org.screamingsandals.bedwars.game.upgrade.trap.TrapQueueConfigParser;
+import org.screamingsandals.bedwars.game.upgrade.trap.TrapQueueDefinition;
 import org.screamingsandals.bedwars.utils.ConfigurateUtils;
 import org.screamingsandals.bedwars.utils.MiscUtils;
 import org.screamingsandals.bedwars.variants.prefab.CommandPrefab;
@@ -41,6 +46,7 @@ import org.spongepowered.configurate.ConfigurateException;
 import org.spongepowered.configurate.ConfigurationNode;
 
 import java.io.File;
+import java.util.Locale;
 
 @Service
 @RequiredArgsConstructor
@@ -89,6 +95,10 @@ public class VariantLoaderImpl implements VariantLoader {
                 prefabs.childrenMap().forEach((o, node) -> {
                     try {
                         var prefabType = node.node("type").getString();
+                        if (prefabType == null) {
+                            logger.error("Prefab {} in variant {} has no type", o, variant.getName());
+                            return;
+                        }
                         @NotNull Prefab prefab;
                         switch (prefabType) {
                             case "command":
@@ -110,13 +120,27 @@ public class VariantLoaderImpl implements VariantLoader {
                 upgrades.childrenMap().forEach((o, node) -> {
                     try {
                         var upgradeType = node.node("type").getString();
+                        if (upgradeType == null) {
+                            logger.error("Built-in upgrade {} in variant {} has no type", o, variant.getName());
+                            return;
+                        }
                         @NotNull BuiltInUpgradeDefinition definition;
-                        switch (upgradeType) {
+                        switch (upgradeType.toLowerCase(Locale.ROOT)) {
                             case "enchantment":
                                 definition = EnchantmentUpgradeDefinition.Loader.INSTANCE.load(node);
                                 break;
                             case "trap":
+                            case "area-effect":
                                 definition = TrapUpgradeDefinition.Loader.INSTANCE.load(node);
+                                break;
+                            case "effect":
+                                definition = EffectUpgradeDefinition.Loader.INSTANCE.load(node);
+                                break;
+                            case "forge":
+                                definition = ForgeUpgradeDefinition.Loader.INSTANCE.load(node);
+                                break;
+                            case "dragon-buff":
+                                definition = DragonBuffUpgradeDefinition.Loader.INSTANCE.load(node);
                                 break;
                             default:
                                 logger.error("Unknown built-in upgrade type: {}", upgradeType);
@@ -127,6 +151,37 @@ public class VariantLoaderImpl implements VariantLoader {
                         logger.error("Could not load a built-in upgrade from variant {}", variant.getName(), exception);
                     }
                 });
+            }
+
+            var trapQueueNode = configMap.node("trap-queue");
+            if (!trapQueueNode.virtual()) {
+                var parsed = TrapQueueConfigParser.parse(trapQueueNode);
+                parsed.warnings().forEach(w -> logger.warn("Variant {}: trap-queue: {}", variant.getName(), w));
+                var currency = parsed.config().settings().currency();
+                if (parsed.config().settings().enabled() && variant.getItemSpawnerType(currency) == null) {
+                    logger.warn("Variant {}: trap-queue currency {} is not a spawner type of this variant", variant.getName(), currency);
+                }
+                variant.setTrapQueue(TrapQueueDefinition.resolve(
+                        parsed.config(),
+                        trapQueueNode,
+                        w -> logger.warn("Variant {}: trap-queue: {}", variant.getName(), w)
+                ));
+            }
+
+            // forge upgrades: warn about spawner types this variant does not define (the upgrade still loads)
+            for (var upgradeEntry : variant.getUpgrades().entrySet()) {
+                if (!(upgradeEntry.getValue() instanceof ForgeUpgradeDefinition)) {
+                    continue;
+                }
+                var forgeSpec = ((ForgeUpgradeDefinition) upgradeEntry.getValue()).getSpec();
+                for (var spawnerTypeKey : forgeSpec.spawnerTypes()) {
+                    if (variant.getItemSpawnerType(spawnerTypeKey) == null) {
+                        logger.warn("Variant {}: forge upgrade {} boosts spawner type {} which this variant does not define", variant.getName(), upgradeEntry.getKey(), spawnerTypeKey);
+                    }
+                }
+                if (forgeSpec.tiers().stream().anyMatch(tier -> tier.spawnsEmeralds()) && variant.getItemSpawnerType(forgeSpec.emeraldSpawnerType()) == null) {
+                    logger.warn("Variant {}: forge upgrade {} drops spawner type {} which this variant does not define", variant.getName(), upgradeEntry.getKey(), forgeSpec.emeraldSpawnerType());
+                }
             }
 
             var timelineNode = configMap.node("timeline");

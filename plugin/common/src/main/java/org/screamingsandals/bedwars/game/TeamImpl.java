@@ -33,6 +33,7 @@ import org.screamingsandals.bedwars.game.target.AExpirableTarget;
 import org.screamingsandals.bedwars.game.target.TargetBlockImpl;
 import org.screamingsandals.bedwars.game.upgrade.UpgradableImpl;
 import org.screamingsandals.bedwars.game.upgrade.builtin.TrapUpgradeDefinition;
+import org.screamingsandals.bedwars.game.upgrade.trap.TrapQueue;
 import org.screamingsandals.bedwars.lang.LangKeys;
 import org.screamingsandals.bedwars.player.BedWarsPlayer;
 import org.screamingsandals.lib.api.types.server.LocationHolder;
@@ -80,6 +81,7 @@ public class TeamImpl extends UpgradableImpl implements Team {
     private final Random randomSpawn = new Random();
     private boolean forced = false;
     private final @NotNull List<@NotNull TrapUpgradeDefinition> traps = new ArrayList<>();
+    private final @NotNull TrapQueue trapQueue = new TrapQueue();
 
     public void start() {
         if (started) {
@@ -167,6 +169,7 @@ public class TeamImpl extends UpgradableImpl implements Team {
         syncBuiltInUpgrades(game.getGameVariant().getUpgrades());
         resetUpgrades();
         this.traps.clear();
+        this.trapQueue.clear();
         this.started = true;
     }
 
@@ -201,6 +204,7 @@ public class TeamImpl extends UpgradableImpl implements Team {
         players.clear();
         teamMembers.clear();
         this.traps.clear();
+        this.trapQueue.clear();
         started = false;
         forced = false;
     }

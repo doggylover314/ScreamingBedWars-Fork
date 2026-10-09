@@ -27,11 +27,14 @@ import org.screamingsandals.bedwars.api.game.upgrade.Upgrade;
 import org.screamingsandals.bedwars.game.upgrade.builtin.BuiltInUpgradeDefinition;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 public class UpgradableImpl implements Upgradable {
     protected final @NotNull Map<@NotNull String, UpgradeImpl> teamUpgrades = new HashMap<>();
+    private final @NotNull Set<@NotNull String> builtInUpgradeNames = new HashSet<>();
 
     @Override
     public @NotNull UpgradeImpl registerUpgrade(@NotNull String name, double initialLevel, @Nullable Double maxLevel) throws IllegalStateException {
@@ -56,14 +59,24 @@ public class UpgradableImpl implements Upgradable {
     }
 
     protected void syncBuiltInUpgrades(@NotNull Map<@NotNull String, BuiltInUpgradeDefinition> upgrades) {
+        // drop built-in upgrades the variant no longer defines; upgrades registered by plugins (registerUpgrade) are kept
+        builtInUpgradeNames.removeIf(name -> {
+            var definition = upgrades.get(name);
+            if (definition == null || !definition.isApplicable(this)) {
+                teamUpgrades.remove(name);
+                return true;
+            }
+            return false;
+        });
         upgrades.forEach((s, upgrade) -> {
-            if (teamUpgrades.containsKey(s)) {
-                if (teamUpgrades.get(s).getInitialLevel() != upgrade.getInitialLevel() || !Objects.equals(teamUpgrades.get(s).getMaximalLevel(), upgrade.getMaximalLevel())) {
-                    teamUpgrades.put(s, new UpgradeImpl(upgrade.getInitialLevel(), upgrade.getMaximalLevel()));
-                }
-            } else {
+            if (!upgrade.isApplicable(this)) {
+                return;
+            }
+            var existing = teamUpgrades.get(s);
+            if (existing == null || existing.getInitialLevel() != upgrade.getInitialLevel() || !Objects.equals(existing.getMaximalLevel(), upgrade.getMaximalLevel())) {
                 teamUpgrades.put(s, new UpgradeImpl(upgrade.getInitialLevel(), upgrade.getMaximalLevel()));
             }
+            builtInUpgradeNames.add(s);
         });
     }
 
