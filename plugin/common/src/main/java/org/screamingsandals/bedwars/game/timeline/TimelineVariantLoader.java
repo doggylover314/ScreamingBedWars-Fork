@@ -25,13 +25,37 @@ import org.screamingsandals.lib.utils.logger.Logger;
 import org.spongepowered.configurate.ConfigurationNode;
 
 /**
- * FOUNDATION-SKELETON: replaced by package P1 (PLAN.md).
+ * Loads the {@code timeline:} section of a variant file (called by {@code VariantLoaderImpl} after the custom
+ * spawner types were parsed).
  */
 public final class TimelineVariantLoader {
     private TimelineVariantLoader() {
     }
 
+    /**
+     * Parses the section, logs every problem as {@code Variant <name>: timeline: <problem>} and warns about spawner
+     * types the variant does not know.
+     *
+     * @return the parsed definition (never null; {@link TimelineDefinition#EMPTY} for an empty section)
+     */
     public static @NotNull TimelineDefinition load(@NotNull VariantImpl variant, @NotNull ConfigurationNode timelineNode, @NotNull Logger logger) {
-        return TimelineDefinition.EMPTY;
+        var result = TimelineParser.parse(timelineNode);
+        for (var warning : result.warnings()) {
+            logger.warn("Variant {}: timeline: {}", variant.getName(), warning);
+        }
+
+        var definition = result.definition();
+        for (var type : definition.spawnerTiers().keySet()) {
+            if (variant.getItemSpawnerType(type) == null) {
+                logger.warn("Variant {}: timeline: spawner-tiers uses unknown spawner type {}", variant.getName(), type);
+            }
+        }
+        for (var event : definition.events()) {
+            if (event.type() == TimelineEventType.SPAWNER_TIER && event.spawnerType() != null
+                    && variant.getItemSpawnerType(event.spawnerType()) == null) {
+                logger.warn("Variant {}: timeline event {} uses unknown spawner type {}", variant.getName(), event.id(), event.spawnerType());
+            }
+        }
+        return definition;
     }
 }
