@@ -147,6 +147,7 @@ The Hypixel-style behavior ships in the bundled `certain-popular-server` variant
 
 ## Configuration
 
+- Settings resolve per arena (`/bw admin <arena> config`), then the variant's `config:` block, then `config.yml`.
 - `timeline:` in a variant file (`variants/<name>.yml`): spawner tier intervals and event times.
 - `modes.list`: defines the game sizes, each with an id, team count, team size and minimum players.
 - `modes.allowed-team-sizes`: team sizes an arena accepts for game sizes (default `1` to `4`).
@@ -157,6 +158,7 @@ The Hypixel-style behavior ships in the bundled `certain-popular-server` variant
 - `game-end-by-time.mode`: result when the time limit ends, `draw` (default) or `tie-break`.
 - `bundled-files.auto-update`: replaces outdated bundled variant and shop files on start (default `true`).
 - `setup.default-team-size`: team size for `/bw set team` without a size (default `4`).
+- `setup.team-generator-types`: generator types placed by `/bw set generator` (default `bronze`; the `certain-popular-server` variant uses iron and gold).
 - `clone.blocks-per-tick`: blocks copied per tick when cloning an arena (default `4096`).
 
 ## Compiling
