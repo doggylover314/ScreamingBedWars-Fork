@@ -21,9 +21,8 @@ package org.screamingsandals.bedwars.commands;
 
 import cloud.commandframework.Command;
 import cloud.commandframework.CommandManager;
-import org.screamingsandals.bedwars.config.MainConfig;
 import org.screamingsandals.bedwars.lang.LangKeys;
-import org.screamingsandals.bedwars.utils.MiscUtils;
+import org.screamingsandals.bedwars.lobby.MainLobby;
 import org.screamingsandals.lib.lang.Message;
 import org.screamingsandals.lib.player.Player;
 import org.screamingsandals.lib.sender.CommandSender;
@@ -52,8 +51,7 @@ public class MainlobbyCommand extends BaseCommand {
 
                     if (action.contains("enable")) {
                         try {
-                            MainConfig.getInstance().node("mainlobby", "enabled").set(true);
-                            MainConfig.getInstance().saveConfig();
+                            MainLobby.setEnabled(true);
 
                             Message
                                     .of(LangKeys.SUCCESS)
@@ -67,9 +65,7 @@ public class MainlobbyCommand extends BaseCommand {
                         var location = sender.as(Player.class).getLocation();
 
                         try {
-                            MainConfig.getInstance().node("mainlobby", "location").set(MiscUtils.writeLocationToString(location));
-                            MainConfig.getInstance().node("mainlobby", "world").set(location.getWorld().getName());
-                            MainConfig.getInstance().saveConfig();
+                            MainLobby.setLocation(location);
 
                             sender.sendMessage(Message.of(LangKeys.SUCCESS).defaultPrefix());
                         } catch (SerializationException e) {

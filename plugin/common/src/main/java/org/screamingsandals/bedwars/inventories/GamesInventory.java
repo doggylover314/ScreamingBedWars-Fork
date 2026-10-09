@@ -27,12 +27,15 @@ import org.screamingsandals.bedwars.commands.RejoinCommand;
 import org.screamingsandals.bedwars.events.PlayerOpenGamesInventoryEventImpl;
 import org.screamingsandals.bedwars.game.GameImpl;
 import org.screamingsandals.bedwars.game.GameManagerImpl;
+import org.screamingsandals.bedwars.game.mode.ModeJoinService;
 import org.screamingsandals.bedwars.lang.LangKeys;
 import org.screamingsandals.bedwars.player.PlayerManagerImpl;
 import org.screamingsandals.lib.event.EventManager;
 import org.screamingsandals.lib.lang.Message;
 import org.screamingsandals.lib.player.Player;
 import org.screamingsandals.lib.plugin.ServiceManager;
+import org.screamingsandals.lib.tasker.DefaultThreads;
+import org.screamingsandals.lib.tasker.Tasker;
 import org.screamingsandals.lib.utils.annotations.Service;
 import org.screamingsandals.lib.utils.annotations.methods.OnPostEnable;
 import org.screamingsandals.lib.utils.annotations.methods.OnPreDisable;
@@ -200,7 +203,8 @@ public class GamesInventory {
                                         return;
                                     }
                                     gameList.stream()
-                                            .filter(game -> game.getStatus() == GameStatus.WAITING)
+                                            .filter(game -> game.getStatus() == GameStatus.WAITING
+                                                    && !(game instanceof GameImpl && ((GameImpl) game).requiresModeSelection()))
                                             .findAny()
                                             .ifPresentOrElse(
                                                     game -> game.joinToGame(playerManager.getPlayerOrCreate(player)),
@@ -220,6 +224,15 @@ public class GamesInventory {
                                             game -> game.joinToGame(playerManager.getPlayerOrCreate(player)),
                                             () -> player.sendMessage(Message.of(LangKeys.GAMES_INVENTORY_COULD_NOT_FIND_GAME).defaultPrefix())
                                     );
+                                    break;
+                                case "join_mode":
+                                    final var modeId = item.getFirstPropertyByName("join_mode").orElseThrow().getPropertyData().node("mode").getString();
+                                    if (modeId == null) {
+                                        player.sendMessage(Message.of(LangKeys.GAMES_INVENTORY_COULD_NOT_FIND_GAME).defaultPrefix());
+                                        return;
+                                    }
+                                    // ModeJoinService.joinMode must run on the global thread
+                                    Tasker.run(DefaultThreads.GLOBAL_THREAD, () -> ModeJoinService.getInstance().joinMode(player, modeId));
                                     break;
                                 default:
                                     break;

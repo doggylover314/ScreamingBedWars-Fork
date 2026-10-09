@@ -28,6 +28,7 @@ import org.screamingsandals.bedwars.config.MainConfig;
 import org.screamingsandals.bedwars.game.GameImpl;
 import org.screamingsandals.bedwars.game.GameManagerImpl;
 import org.screamingsandals.bedwars.game.TeamImpl;
+import org.screamingsandals.bedwars.game.mode.ModeManager;
 import org.screamingsandals.bedwars.game.target.AExpirableTarget;
 import org.screamingsandals.bedwars.game.target.TargetBlockImpl;
 import org.screamingsandals.bedwars.player.PlayerManagerImpl;
@@ -153,6 +154,8 @@ public class BedwarsExpansion extends PlaceholderExpansion {
                                 case DISABLED:
                                     return Component.text(GameImpl.getFormattedTimeLeft(0));
                             }
+                        case "mode":
+                            return ModeManager.displayNameComponent(game.getActiveMode());
                         case "world":
                             return Component.text(game.getWorld().getName());
                         case "state":
@@ -225,6 +228,43 @@ public class BedwarsExpansion extends PlaceholderExpansion {
                     }
                 }
             }
+        }
+
+        if (identifier.startsWith("mode_")) { // %bedwars_mode_<id>_<operation>%
+            var rest = identifier.substring(5);
+            var index = rest.lastIndexOf('_');
+            if (index <= 0 || !ModeManager.isModesEnabled()) {
+                return null;
+            }
+            var modeOpt = ModeManager.getInstance().getMode(rest.substring(0, index));
+            if (modeOpt.isEmpty()) {
+                return null;
+            }
+            var mode = modeOpt.get();
+            var stats = ModeManager.getInstance().getStats(mode);
+            switch (rest.substring(index + 1).toLowerCase(Locale.ROOT)) {
+                case "name":
+                    return ModeManager.displayNameComponent(mode);
+                case "id":
+                    return Component.text(mode.id());
+                case "players":
+                    return Component.text(stats.players());
+                case "waiting":
+                    return Component.text(stats.waitingPlayers());
+                case "playing":
+                    return Component.text(stats.playingPlayers());
+                case "arenas":
+                    return Component.text(stats.joinableArenas());
+                case "teamsize":
+                    return Component.text(mode.teamSize());
+                case "teamcount":
+                    return Component.text(mode.teamCount());
+                case "maxplayers":
+                    return Component.text(mode.maxPlayers());
+                case "minplayers":
+                    return Component.text(mode.minPlayers());
+            }
+            return null;
         }
 
         if (identifier.startsWith("all_games_")) {
@@ -466,6 +506,8 @@ public class BedwarsExpansion extends PlaceholderExpansion {
                     return PlayerManagerImpl.getInstance().getGameOfPlayer(player.getUuid()).map(g -> Component.text(g.getMaxPlayers())).orElseGet(() -> Component.text("0"));
                 case "game_minplayers":
                     return PlayerManagerImpl.getInstance().getGameOfPlayer(player.getUuid()).map(g -> Component.text(g.getMinPlayers())).orElseGet(() -> Component.text("0"));
+                case "game_mode":
+                    return PlayerManagerImpl.getInstance().getGameOfPlayer(player.getUuid()).map(g -> ModeManager.displayNameComponent(g.getActiveMode())).orElseGet(Component::empty);
                 case "game_world":
                     return Component.text(PlayerManagerImpl.getInstance().getGameOfPlayer(player.getUuid()).map(g -> g.getWorld().getName()).orElse("none"));
                 case "game_state":
