@@ -1,11 +1,12 @@
 # Screaming BedWars (fork)
 
-BedWars plugin for Minecraft 1.8.8 to 26.3, packaged as one jar. Based on [ScreamingSandals BedWars](https://github.com/ScreamingSandals/BedWars), originally inspired by BedwarsRel.
+BedWars plugin for Minecraft 1.8.8 to 26.3, packaged as one jar. Based on [ScreamingSandals BedWars](https://github.com/ScreamingSandals/BedWars) and inspired by BedwarsRel.
 
 ## Features
 
 - Core BedWars game with beds, teams and spectators.
-- Other variants: CakeWars, EggWars and AnchorWars.
+- CakeWars, EggWars and AnchorWars, using a cake, dragon egg or respawn anchor as the target.
+- Arena variants, such as `default` and `certain-popular-server`.
 - Shops, with several shops per arena.
 - BungeeCord support.
 - Vault rewards.
@@ -18,12 +19,9 @@ BedWars plugin for Minecraft 1.8.8 to 26.3, packaged as one jar. Based on [Screa
 - Automatic coloring of items such as armor.
 - Resource spawners, in any number.
 - Player statistics.
-- Most behavior is configurable.
-
-## Fork additions
-
-- Generator tiers and a game timeline: Diamond and Emerald II and III, bed destruction, sudden death and game end.
-- Sudden death with ender dragons, one per team still alive.
+- Generator tiers, including Diamond and Emerald II and III.
+- A game timeline with bed destruction, sudden death and game end.
+- Ender dragons in sudden death, one per team still alive.
 - A draw result when the time limit ends.
 - Team upgrades: Sharpness, Protection, Haste, Iron Forge tiers, Heal Pool and Dragon Buff, with a price for each tier.
 - A trap queue with It's a Trap, Counter-Offensive, Alarm and Miner Fatigue.
@@ -31,6 +29,7 @@ BedWars plugin for Minecraft 1.8.8 to 26.3, packaged as one jar. Based on [Screa
 - Game sizes picked at lobby NPCs, with team sizes filled automatically.
 - Short setup commands: `/bw setup` and `/bw set`.
 - Arena cloning with `/bw admin <arena> clone` and `/bw setup clone`.
+- Most behavior is configurable.
 
 The Hypixel-style behavior ships in the bundled `certain-popular-server` variant. The timings and prices are configurable.
 
@@ -47,10 +46,11 @@ The Hypixel-style behavior ships in the bundled `certain-popular-server` variant
 
     `/bw setup status` shows what is still missing.
 4. Save with `/bw setup save` once the required steps are done.
-5. Use `/bw mainlobby set` to mark the BedWars lobby, then run `/bw mainlobby enable` so players return there after a game.
-6. Stand at the hub spot, run `/bw npc add`, then `/bw npc action TELEPORT_TO_LOBBY`. Clicking the NPC sends players to the lobby.
+5. Run `/bw mainlobby set` to mark the lobby. Run `/bw mainlobby enable` so players return after a game.
+6. Stand at the hub spot and run `/bw npc add`. Set its click action with `/bw npc action TELEPORT_TO_LOBBY`.
 7. In the lobby, run `/bw npc spawnmodes`. It spawns one NPC per game size.
-8. Players click a size NPC. They join a waiting arena of that size, or an idle arena with the same number of teams is claimed. Team sizes are set automatically.
+8. Players click a size NPC and join a waiting arena of that size.
+    - If none is free, an idle arena with the same number of teams is claimed for them.
 
 ## Command reference
 
@@ -65,10 +65,7 @@ The Hypixel-style behavior ships in the bundled `certain-popular-server` variant
 | `/bw setup save` | Saves the arena once all required steps are done. |
 | `/bw setup save force` | Saves the arena and skips the warnings. |
 | `/bw setup cancel` | Discards unsaved changes. A new arena that was never saved is dropped. |
-| `/bw setup clone <new-name> <x> <y> <z> [world]` | Copies the selected arena to a new position. Start it with `clone confirm`. |
-| `/bw setup clone confirm` | Starts the pending clone. |
-| `/bw setup clone cancel` | Cancels the pending clone. |
-| `/bw setup clone status` | Shows the state of the current clone. |
+| `/bw setup clone <new-name> <x> <y> <z> [world]` | Same as `/bw admin <arena> clone` for the selected arena. Also `confirm`, `cancel` and `status`. |
 | `/bw set pos1` | Sets the first corner of the arena at your position. |
 | `/bw set pos1 force` | Sets the first corner and skips the overlap check. |
 | `/bw set pos2` | Sets the opposite corner of the arena at your position. |
@@ -81,8 +78,8 @@ The Hypixel-style behavior ships in the bundled `certain-popular-server` variant
 | `/bw set spawn <team>` | Sets the spawn of a team at your position. |
 | `/bw set bed <team>` | Sets the bed of a team. Stand on it or look at it. |
 | `/bw set target <team>` | Sets a non-bed target block of a team, the block you look at. |
-| `/bw set generator <team>` | Places the team generators here and replaces the older ones. |
-| `/bw set generator <team> add` | Places the team generators here and keeps the older ones. |
+| `/bw set generator <team>` | Places the team generators here and replaces the existing ones. |
+| `/bw set generator <team> add` | Places the team generators here and keeps the existing ones. |
 | `/bw set diamond` | Places a diamond spawner at your position. |
 | `/bw set emerald` | Places an emerald spawner at your position. |
 | `/bw set shop [team]` | Places a shop at your position, optionally for a team. |
@@ -97,6 +94,7 @@ The Hypixel-style behavior ships in the bundled `certain-popular-server` variant
 | `/bw admin <arena> clone cancel` | Cancels the pending clone. |
 | `/bw admin <arena> clone status` | Shows the state of the current clone. |
 | `/bw admin <arena> variant <variant>` | Changes the variant of an arena that is open for setup. |
+| `/bw admin <arena> prefab <prefab>` | Runs a variant prefab on an arena open for setup. `upgrade-shop` (`certain-popular-server`) places an upgrade shop at your position. |
 
 ### Lobby and NPCs
 
@@ -131,8 +129,7 @@ The Hypixel-style behavior ships in the bundled `certain-popular-server` variant
 
 | Command | What it does |
 |---|---|
-| `/party` | Shows the party help. |
-| `/party help` | Shows the party help. |
+| `/party` or `/party help` | Shows the party help. |
 | `/party invite <player>` | Invites an online player. |
 | `/party <player>` | Same as `/party invite <player>`, when `party.commands.invite-shortcut` is on. |
 | `/party accept [player]` | Accepts an invite, optionally from a named player. |
@@ -151,9 +148,9 @@ The Hypixel-style behavior ships in the bundled `certain-popular-server` variant
 ## Configuration
 
 - `timeline:` in a variant file (`variants/<name>.yml`): spawner tier intervals and event times.
-- `modes.list`: game sizes, each with an id, team count, team size and minimum players.
+- `modes.list`: defines the game sizes, each with an id, team count, team size and minimum players.
 - `modes.allowed-team-sizes`: team sizes an arena accepts for game sizes (default `1` to `4`).
-- `modes.only-via-mode-selection`: when `true`, players join an arena only through game-size NPCs and `/bw mode join`.
+- `modes.only-via-mode-selection`: unclaimed arenas accept non-admins only through game-size NPCs and `/bw mode join`.
 - `party.max-size`: largest party size (default `4`).
 - `party.invite-expire-seconds`: how long a party invite stays valid (default `60`).
 - `sudden-death.dragon.block-destruction`: blocks dragons can break: `all`, `placed` (default) or `none`.
@@ -180,8 +177,8 @@ The compiled JAR file is located in `plugin/universal/build/libs`.
 
 ## Upstream
 
-This fork is based on [ScreamingSandals BedWars](https://github.com/ScreamingSandals/BedWars). The upstream [Discord](https://discord.gg/4xB54Ts) and [docs](https://docs.screamingsandals.org) cover the upstream project, not this fork.
+The upstream [Discord](https://discord.gg/4xB54Ts) and [docs](https://docs.screamingsandals.org) cover the upstream project, not this fork.
 
 ## License
 
-This project is licensed under the **GNU Lesser General Public License v3.0** License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the **GNU Lesser General Public License v3.0**. See the [LICENSE](LICENSE) file for details.
