@@ -21,9 +21,10 @@ package org.screamingsandals.bedwars.commands;
 
 import cloud.commandframework.Command;
 import cloud.commandframework.CommandManager;
+import org.screamingsandals.bedwars.game.GameImpl;
 import org.screamingsandals.bedwars.game.GameManagerImpl;
 import org.screamingsandals.bedwars.lang.LangKeys;
-import org.screamingsandals.bedwars.player.BedWarsPlayer;
+import org.screamingsandals.bedwars.party.PartyJoinCoordinator;
 import org.screamingsandals.bedwars.player.PlayerManagerImpl;
 import org.screamingsandals.lib.Server;
 import org.screamingsandals.lib.lang.Message;
@@ -65,11 +66,21 @@ public class AlljoinCommand extends BaseCommand {
                                     return;
                                 }
 
-                                if (PlayerManagerImpl.getInstance().isPlayerInGame(player)) {
-                                    var p = player.as(BedWarsPlayer.class);
-                                    p.getGame().leaveFromGame(p);
+                                var bwPlayer = PlayerManagerImpl.getInstance().getPlayerOrCreate(player);
+                                if (bwPlayer.getGame() == game.get()) {
+                                    return; // already there: joining again would only charge the entry fee a second time
                                 }
-                                game.get().joinToGame(PlayerManagerImpl.getInstance().getPlayerOrCreate(player));
+                                if (game.get() instanceof GameImpl) {
+                                    // fork: an admin-forced join ignores the party rules (C3) and switches games without the
+                                    // leave/restore round trip (see PartyJoinCoordinator.moveToGame)
+                                    PartyJoinCoordinator.getInstance().runBypassing(
+                                            () -> PartyJoinCoordinator.moveToGame(bwPlayer, (GameImpl) game.get()));
+                                } else {
+                                    if (bwPlayer.isInGame()) {
+                                        bwPlayer.getGame().leaveFromGame(bwPlayer);
+                                    }
+                                    game.get().joinToGame(bwPlayer);
+                                }
                             });
                         })
         );

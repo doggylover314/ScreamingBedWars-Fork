@@ -17,11 +17,24 @@
  * along with Screaming BedWars. If not, see <https://www.gnu.org/licenses/>.
  */
 
-@Init(services = {
-        PartyManagerImpl.class,
-        PartyJoinCoordinator.class,
-        PartyEventListener.class
-})
 package org.screamingsandals.bedwars.party;
 
-import org.screamingsandals.lib.utils.annotations.Init;
+/**
+ * Why a {@link PartyRegistry} operation was refused.
+ */
+public enum PartyError {
+    NOT_IN_PARTY,
+    NOT_LEADER,
+    CANNOT_INVITE_SELF,
+    ALREADY_MEMBER,
+    TARGET_IN_PARTY,
+    ALREADY_INVITED,
+    PARTY_FULL,
+    ALREADY_IN_PARTY,
+    NO_INVITE,
+    NO_INVITE_FROM,
+    NOT_A_MEMBER,
+    CANNOT_KICK_SELF,
+    CANNOT_TRANSFER_SELF,
+    TARGET_OFFLINE
+}
