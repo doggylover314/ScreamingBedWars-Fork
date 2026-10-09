@@ -43,7 +43,6 @@ public record ArenaSetupSnapshot(
         @NotNull List<StoreInfo> stores,
         boolean variantHasUpgrades,
         @NotNull Set<String> variantSpawnerTypes,   // lower-case config keys
-        @NotNull List<String> teamGeneratorTypes,   // lower-case
         @NotNull String diamondType,                // lower-case
         @NotNull String emeraldType,                // lower-case
         @Nullable String upgradeShopFile,           // resolved, or null if the variant has none
