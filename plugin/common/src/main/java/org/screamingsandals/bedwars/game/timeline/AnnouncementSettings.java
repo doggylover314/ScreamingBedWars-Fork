@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2025 ScreamingSandals
+ * Copyright (C) 2026 ScreamingSandals
  *
  * This file is part of Screaming BedWars.
  *
@@ -17,22 +17,13 @@
  * along with Screaming BedWars. If not, see <https://www.gnu.org/licenses/>.
  */
 
-package org.screamingsandals.bedwars.events;
+package org.screamingsandals.bedwars.game.timeline;
 
-import lombok.Data;
-import org.screamingsandals.bedwars.api.events.PlayerKilledEvent;
-import org.screamingsandals.bedwars.game.GameImpl;
-import org.screamingsandals.bedwars.player.BedWarsPlayer;
-import org.screamingsandals.lib.event.Event;
-import org.screamingsandals.lib.item.ItemStack;
+import org.jetbrains.annotations.NotNull;
 
-import java.util.List;
-
-@Data
-public class PlayerKilledEventImpl implements PlayerKilledEvent, Event {
-    private final GameImpl game;
-    private final BedWarsPlayer killer;
-    private final BedWarsPlayer player;
-    private final List<ItemStack> drops;
-    private boolean playSound = true;
+/**
+ * Defaults of the variant {@code timeline.announcements} section (pure).
+ */
+public record AnnouncementSettings(boolean chat, boolean title, @NotNull SoundSpec sound) {
+    public static final AnnouncementSettings DEFAULT = new AnnouncementSettings(true, true, SoundSpec.DEFAULT_ANNOUNCEMENT);
 }

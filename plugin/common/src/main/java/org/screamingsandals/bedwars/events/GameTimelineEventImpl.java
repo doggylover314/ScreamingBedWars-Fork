@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2025 ScreamingSandals
+ * Copyright (C) 2026 ScreamingSandals
  *
  * This file is part of Screaming BedWars.
  *
@@ -20,19 +20,29 @@
 package org.screamingsandals.bedwars.events;
 
 import lombok.Data;
-import org.screamingsandals.bedwars.api.events.PlayerKilledEvent;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+import org.screamingsandals.bedwars.api.events.GameTimelineEvent;
 import org.screamingsandals.bedwars.game.GameImpl;
-import org.screamingsandals.bedwars.player.BedWarsPlayer;
-import org.screamingsandals.lib.event.Event;
-import org.screamingsandals.lib.item.ItemStack;
-
-import java.util.List;
+import org.screamingsandals.lib.event.CancellableEvent;
 
 @Data
-public class PlayerKilledEventImpl implements PlayerKilledEvent, Event {
-    private final GameImpl game;
-    private final BedWarsPlayer killer;
-    private final BedWarsPlayer player;
-    private final List<ItemStack> drops;
-    private boolean playSound = true;
+public class GameTimelineEventImpl implements GameTimelineEvent, CancellableEvent {
+    private final @NotNull GameImpl game;
+    private final @NotNull String eventId;
+    private final @NotNull String eventType;
+    private final int scheduledTime;
+    private final @Nullable String spawnerType;
+    private final int tier;
+    private boolean cancelled;
+
+    @Override
+    public boolean cancelled() {
+        return cancelled;
+    }
+
+    @Override
+    public void cancelled(boolean cancel) {
+        this.cancelled = cancel;
+    }
 }

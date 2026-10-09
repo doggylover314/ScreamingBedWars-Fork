@@ -32,9 +32,11 @@ import org.screamingsandals.bedwars.api.game.ItemSpawner;
 import org.screamingsandals.bedwars.api.game.ItemSpawnerTypeHolder;
 import org.screamingsandals.bedwars.config.MainConfig;
 import org.screamingsandals.bedwars.events.ResourceSpawnEventImpl;
+import org.screamingsandals.bedwars.game.timeline.SpawnerCycleMath;
 import org.screamingsandals.bedwars.lang.LangKeys;
 import org.screamingsandals.bedwars.player.BedWarsPlayer;
 import org.screamingsandals.bedwars.utils.MiscUtils;
+import org.screamingsandals.bedwars.utils.RomanNumerals;
 import org.screamingsandals.lib.entity.Entity;
 import org.screamingsandals.lib.entity.ItemEntity;
 import org.screamingsandals.lib.entity.Entities;
@@ -99,6 +101,12 @@ public class ItemSpawnerImpl implements ItemSpawner, SerializableGameComponent {
     @Getter(AccessLevel.NONE)
     @Setter(AccessLevel.NONE)
     private volatile boolean firstTick = true;
+    /**
+     * Whether the hologram has a countdown line (line 2 for certain-popular-server holograms, otherwise line 1).
+     */
+    @Getter(AccessLevel.NONE)
+    @Setter(AccessLevel.NONE)
+    private boolean countdownLine;
     @Setter(AccessLevel.NONE)
     private Pair<Long, TaskerTime> currentInterval;
     @Setter(AccessLevel.NONE)
@@ -242,14 +250,22 @@ public class ItemSpawnerImpl implements ItemSpawner, SerializableGameComponent {
 
     public void setTier(int tier) {
         this.tier = tier;
-        if (certainPopularServerHolo) {
-            hologram.replaceLine(0, Message.of(LangKeys.IN_GAME_SPAWNER_TIER).placeholder("tier", this.tier));
+        if (certainPopularServerHolo && hologram != null) { // fix: NPE when holograms are disabled or failed to spawn
+            hologram.replaceLine(0, tierHologramLine());
         }
+    }
+
+    private @NotNull Message tierHologramLine() {
+        // in_game.spawner.tier = "<yellow>Tier <red><tier>" -> "Tier II"
+        return Message.of(LangKeys.IN_GAME_SPAWNER_TIER)
+                .placeholder("tier", RomanNumerals.toRoman(this.tier))
+                .placeholder("tier-number", this.tier);
     }
 
     @Override
     public long getIntervalTicks() {
-        return currentInterval != null ? currentInterval.second().getBukkitTime(currentCycle - elapsedTime % currentCycle) : 0;
+        // fix: this used to return the remaining time with the time unit applied twice; the API pairs it with setIntervalTicks, so it is the interval
+        return started && currentInterval != null ? currentCycle : getInitialIntervalTicks();
     }
 
     @Override
@@ -273,18 +289,19 @@ public class ItemSpawnerImpl implements ItemSpawner, SerializableGameComponent {
             hologram = HologramManager
                     .hologram(loc);
             if (certainPopularServerHolo) {
-                hologram.firstLine(Message.of(LangKeys.IN_GAME_SPAWNER_TIER).placeholder("tier", this.tier));
+                hologram.firstLine(tierHologramLine());
                 hologram.bottomLine(TextEntry.of(cachedType.getItemBoldName()));
             } else {
                 hologram.firstLine(TextEntry.of(cachedType.getItemBoldName()));
             }
 
+            this.countdownLine = countdownHologram;
             if (countdownHologram) {
                 var interval = this.getInitialIntervalTicks();
                 hologram.bottomLine((
-                        interval < 40 ? Message.of(LangKeys.IN_GAME_SPAWNER_EVERY_SECOND)
+                        !SpawnerCycleMath.showsCountdown(interval) ? Message.of(LangKeys.IN_GAME_SPAWNER_EVERY_SECOND)
                                         : Message.of(certainPopularServerHolo ? LangKeys.IN_GAME_SPAWNER_COUNTDOWN_CERTAIN_POPULAR_SERVER : LangKeys.IN_GAME_SPAWNER_COUNTDOWN).placeholder("seconds",
-                                interval / 20)
+                                (interval + 19) / 20)
                         )
                 );
             }
@@ -329,6 +346,7 @@ public class ItemSpawnerImpl implements ItemSpawner, SerializableGameComponent {
         spawnedItems.clear();
         started = false;
         disabled = false;
+        countdownLine = false;
     }
 
     public void start(GameImpl game) {
@@ -342,10 +360,12 @@ public class ItemSpawnerImpl implements ItemSpawner, SerializableGameComponent {
         }
 
         this.amountPerSpawn = this.baseAmountPerSpawn;
-        this.tier = 0;
+        this.tier = 1; // "Tier I" is the base tier
         this.certainPopularServerHolo = hologramType == HologramType.CERTAIN_POPULAR_SERVER || (hologramType == HologramType.DEFAULT && game.getConfigurationContainer().getOrDefault(GameConfigurationContainer.USE_CERTAIN_POPULAR_SERVER_LIKE_HOLOGRAMS_FOR_SPAWNERS, false));
 
-        if (team != null && !game.isTeamActive(team) && game.getConfigurationContainer().getOrDefault(GameConfigurationContainer.STOP_TEAM_SPAWNERS_ON_DIE, false)) {
+        if (team != null && !game.isTeamActive(team)
+                && (game.getActiveMode() != null // modes: teams that got no players are out of the game
+                    || game.getConfigurationContainer().getOrDefault(GameConfigurationContainer.STOP_TEAM_SPAWNERS_ON_DIE, false))) {
             disabled = true;
         }
 
@@ -414,6 +434,7 @@ public class ItemSpawnerImpl implements ItemSpawner, SerializableGameComponent {
                 if (this.maxSpawnedResources > getSpawnedItemsCount()) {
                     elapsedTime += this.countdownDelay;
                     this.countdownDelay = elapsedTime % currentCycle;
+                    elapsedTime -= this.countdownDelay; // fix: the countdown restarts now, so the hologram below must show a full cycle (this value is otherwise only used for the hologram)
                     this.spawnerLockedFull = false;
                     preventSpawn = true;
                 } else {
@@ -421,28 +442,20 @@ public class ItemSpawnerImpl implements ItemSpawner, SerializableGameComponent {
                 }
             }
 
-            if (useHolograms && elapsedTime % 20 == 0) {
-                long remainingTimeToSpawn = (currentCycle - elapsedTime % currentCycle) / 20;
-
-                if (remainingTimeToSpawn == 0) {
-                    remainingTimeToSpawn = currentCycle / 20;
-                }
+            if (useHolograms && hologram != null && Math.floorMod(elapsedTime, 20L) == 0) { // fix: NPE if prepareHolograms failed
+                // fix: the remaining time is already in seconds; previously the unit was applied a second time (wrong for TICKS/MINUTES intervals)
+                long remainingTimeToSpawn = SpawnerCycleMath.remainingSeconds(elapsedTime, currentCycle);
 
                 if (!spawnerIsFullHologram) {
-                    if (certainPopularServerHolo) {
-                        if (currentInterval.first() > 1) {
-                            hologram.replaceLine(2, Message.of(LangKeys.IN_GAME_SPAWNER_COUNTDOWN_CERTAIN_POPULAR_SERVER).placeholder("seconds",  currentInterval.second().getBukkitTime(remainingTimeToSpawn) / 20));
-                        } else if (rerenderHologram) {
-                            hologram.replaceLine(2, Message.of(LangKeys.IN_GAME_SPAWNER_EVERY_SECOND));
-                            rerenderHologram = false;
-                        }
-                    } else {
-                        if (currentInterval.first() > 1) {
-                            hologram.replaceLine(1, Message.of(LangKeys.IN_GAME_SPAWNER_COUNTDOWN).placeholder("seconds",  currentInterval.second().getBukkitTime(remainingTimeToSpawn) / 20));
-                        } else if (rerenderHologram) {
-                            hologram.replaceLine(1, Message.of(LangKeys.IN_GAME_SPAWNER_EVERY_SECOND));
-                            rerenderHologram = false;
-                        }
+                    int line = certainPopularServerHolo ? 2 : 1;
+                    if (SpawnerCycleMath.showsCountdown(currentCycle)) { // fix: was currentInterval.first() > 1 (unit dependent)
+                        hologram.replaceLine(line, Message.of(certainPopularServerHolo
+                                        ? LangKeys.IN_GAME_SPAWNER_COUNTDOWN_CERTAIN_POPULAR_SERVER
+                                        : LangKeys.IN_GAME_SPAWNER_COUNTDOWN)
+                                .placeholder("seconds", remainingTimeToSpawn));
+                    } else if (rerenderHologram) {
+                        hologram.replaceLine(line, Message.of(LangKeys.IN_GAME_SPAWNER_EVERY_SECOND));
+                        rerenderHologram = false;
                     }
                 }
             }
@@ -490,8 +503,34 @@ public class ItemSpawnerImpl implements ItemSpawner, SerializableGameComponent {
             return;
         }
 
+        long newCycle = Math.max(1L, time.second().getBukkitTime(time.first()));
+        if (this.currentCycle > 0) {
+            // keep the running countdown: the next spawn happens after min(time left in the old cycle, one full new cycle)
+            this.countdownDelay = SpawnerCycleMath.rebaseCountdownDelay(this.elapsedTime, this.countdownDelay, this.currentCycle, newCycle);
+        }
         this.currentInterval = time;
-        this.currentCycle = time.second().getBukkitTime(time.first());
+        this.currentCycle = newCycle;
+        refreshCountdownHologram();
+    }
+
+    /**
+     * Rewrites the countdown line right away (after an interval change) instead of waiting for the next full second.
+     */
+    private void refreshCountdownHologram() {
+        if (hologram == null || !countdownLine || spawnerIsFullHologram) {
+            return;
+        }
+        int line = certainPopularServerHolo ? 2 : 1;
+        if (SpawnerCycleMath.showsCountdown(currentCycle)) {
+            // elapsedTime - countdownDelay is the local value the next spawner run evaluates
+            hologram.replaceLine(line, Message.of(certainPopularServerHolo
+                            ? LangKeys.IN_GAME_SPAWNER_COUNTDOWN_CERTAIN_POPULAR_SERVER
+                            : LangKeys.IN_GAME_SPAWNER_COUNTDOWN)
+                    .placeholder("seconds", SpawnerCycleMath.remainingSeconds(elapsedTime - countdownDelay, currentCycle)));
+        } else {
+            hologram.replaceLine(line, Message.of(LangKeys.IN_GAME_SPAWNER_EVERY_SECOND));
+            rerenderHologram = false;
+        }
     }
 
     @Override
