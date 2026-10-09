@@ -69,7 +69,9 @@ public class BedWarsNPC {
                     .lookAtPlayer(shouldLookAtPlayer);
 
             var holo = npc.hologram();
-            hologramAbove.forEach(s -> holo.bottomLine(NpcHologramPlaceholders.line(this, s)));
+            for (var line : NpcHologramPlaceholders.lines(this, hologramAbove)) { // numbers read once for all lines
+                holo.bottomLine(line);
+            }
             lastHologramSignature = null;
 
             if (skin != null && skin.getValue() != null) {

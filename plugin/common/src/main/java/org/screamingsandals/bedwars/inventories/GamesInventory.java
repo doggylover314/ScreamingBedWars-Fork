@@ -30,6 +30,7 @@ import org.screamingsandals.bedwars.game.GameManagerImpl;
 import org.screamingsandals.bedwars.game.mode.ModeJoinService;
 import org.screamingsandals.bedwars.lang.LangKeys;
 import org.screamingsandals.bedwars.player.PlayerManagerImpl;
+import org.screamingsandals.bedwars.utils.MiscUtils;
 import org.screamingsandals.lib.event.EventManager;
 import org.screamingsandals.lib.lang.Message;
 import org.screamingsandals.lib.player.Player;
@@ -202,12 +203,16 @@ public class GamesInventory {
                                         player.sendMessage(Message.of(LangKeys.GAMES_INVENTORY_COULD_NOT_FIND_GAME).defaultPrefix());
                                         return;
                                     }
-                                    gameList.stream()
-                                            .filter(game -> game.getStatus() == GameStatus.WAITING
-                                                    && !(game instanceof GameImpl && ((GameImpl) game).requiresModeSelection()))
-                                            .findAny()
+                                    final var bwPlayer = playerManager.getPlayerOrCreate(player);
+                                    // prefer the fullest arena that has room for the player's whole party; if there is none
+                                    // (all full / the party fits nowhere) keep the old pick, so the join reports the reason
+                                    MiscUtils.getGameWithHighestPlayers(gameList, false, bwPlayer)
+                                            .or(() -> gameList.stream()
+                                                    .filter(game -> game.getStatus() == GameStatus.WAITING
+                                                            && !(game instanceof GameImpl && ((GameImpl) game).requiresModeSelection()))
+                                                    .findAny())
                                             .ifPresentOrElse(
-                                                    game -> game.joinToGame(playerManager.getPlayerOrCreate(player)),
+                                                    game -> game.joinToGame(bwPlayer),
                                                     () -> player.sendMessage(Message.of(LangKeys.GAMES_INVENTORY_COULD_NOT_FIND_GAME).defaultPrefix())
                                             );
                                     break;

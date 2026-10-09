@@ -20,10 +20,13 @@
 package org.screamingsandals.bedwars.lobby;
 
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.screamingsandals.bedwars.game.mode.ModeManager;
+import org.screamingsandals.bedwars.game.mode.ModeStats;
 import org.screamingsandals.lib.lang.Message;
 import org.screamingsandals.lib.spectator.Component;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
@@ -43,21 +46,47 @@ public final class NpcHologramPlaceholders {
      * Always attaches at least one lambda placeholder, so every call returns a Message that is NOT equal to the
      * previous one (Message is a Lombok data class and lambdas compare by identity). That is what makes the slib
      * hologram re-send a line when it is replaced.
+     * <p>
+     * The numbers are read ONCE here, on the calling (global) thread, and the placeholders only capture them: slib
+     * resolves the placeholders per viewer, possibly on another thread, where the game state must not be touched
+     * (and where every viewer would otherwise walk all arenas again). Because the lambdas capture the numbers they are
+     * new instances per call, so the Message still differs. The lambdas capture only immutable values (numbers, the mode
+     * id and its already resolved display name), they never read the game state or the mode registry themselves.
      */
     public static @NotNull Message line(@NotNull BedWarsNPC npc, @NotNull String raw) {
+        return line(npc, raw, Counts.read(npc));
+    }
+
+    /**
+     * All the given lines of one NPC built from a single read of the numbers (spawn): the arenas are walked once, not
+     * once per line.
+     */
+    static @NotNull List<Message> lines(@NotNull BedWarsNPC npc, @NotNull List<String> raws) {
+        if (raws.isEmpty()) {
+            return List.of();
+        }
+        var counts = Counts.read(npc);
+        var result = new ArrayList<Message>(raws.size());
+        for (var raw : raws) {
+            result.add(line(npc, raw, counts));
+        }
+        return result;
+    }
+
+    private static @NotNull Message line(@NotNull BedWarsNPC npc, @NotNull String raw, @NotNull Counts counts) {
+        final int allPlayers = counts.allPlayers();
         var message = Message.ofRichText(raw)
-                .placeholder("all-players", sender -> Component.text(ModeManager.getInstance().countAllPlayers()));
-        var value = npc.getValue();
-        if (npc.getAction() == BedWarsNPC.Action.JOIN_MODE && value != null && !value.isBlank()) {
-            var modeId = value.trim().toLowerCase(Locale.ROOT);
-            message.placeholder("mode", sender -> ModeManager.getInstance().getMode(modeId)
-                            .map(ModeManager::displayNameComponent)
-                            .orElseGet(() -> Component.text(modeId)))
+                .placeholder("all-players", sender -> Component.text(allPlayers));
+        var modeId = counts.modeId();
+        if (modeId != null) {
+            final var stats = counts.stats();
+            final var modeName = counts.modeName();
+            message.placeholder("mode", sender -> modeName)
                     .placeholder("mode-id", sender -> Component.text(modeId))
-                    .placeholder("mode-players", sender -> Component.text(ModeManager.getInstance().getStats(modeId).players()))
-                    .placeholder("mode-waiting", sender -> Component.text(ModeManager.getInstance().getStats(modeId).waitingPlayers()))
-                    .placeholder("mode-playing", sender -> Component.text(ModeManager.getInstance().getStats(modeId).playingPlayers()))
-                    .placeholder("mode-arenas", sender -> Component.text(ModeManager.getInstance().getStats(modeId).joinableArenas()));
+                    .placeholder("mode-players", sender -> Component.text(stats.players()))
+                    .placeholder("mode-waiting", sender -> Component.text(stats.waitingPlayers()))
+                    .placeholder("mode-playing", sender -> Component.text(stats.playingPlayers()))
+                    .placeholder("mode-arenas", sender -> Component.text(stats.joinableArenas()));
         }
         return message;
     }
@@ -77,7 +106,8 @@ public final class NpcHologramPlaceholders {
         if (!papi && !own) {
             return;
         }
-        var signature = signature(npc);
+        var counts = Counts.read(npc); // once per refresh: shared by the signature and every line
+        var signature = counts.signature(npc);
         if (!papi && signature.equals(npc.getLastHologramSignature())) {
             return; // counts unchanged -> no packets
         }
@@ -85,18 +115,47 @@ public final class NpcHologramPlaceholders {
         var hologram = visual.hologram();
         for (int i = 0; i < lines.size(); i++) {
             if (NpcHologramText.isDynamic(lines.get(i))) {
-                hologram.replaceLine(i, line(npc, lines.get(i)));
+                hologram.replaceLine(i, line(npc, lines.get(i), counts));
             }
         }
     }
 
-    static @NotNull String signature(@NotNull BedWarsNPC npc) {
-        var sb = new StringBuilder().append(npc.getAction()).append('|').append(npc.getValue())
-                .append('|').append(ModeManager.getInstance().countAllPlayers());
-        if (npc.getAction() == BedWarsNPC.Action.JOIN_MODE && npc.getValue() != null) {
-            var s = ModeManager.getInstance().getStats(npc.getValue());
-            sb.append('|').append(s.waitingPlayers()).append('|').append(s.playingPlayers()).append('|').append(s.joinableArenas());
+    static @NotNull String signature(@NotNull String action, @Nullable String value, int allPlayers, @Nullable ModeStats stats) {
+        var sb = new StringBuilder().append(action).append('|').append(value).append('|').append(allPlayers);
+        if (stats != null) {
+            sb.append('|').append(stats.waitingPlayers()).append('|').append(stats.playingPlayers()).append('|').append(stats.joinableArenas());
         }
         return sb.toString();
+    }
+
+    /**
+     * Numbers one refresh of an NPC needs, read once (global thread).
+     *
+     * @param modeId   normalised mode id of a {@code JOIN_MODE} NPC, otherwise {@code null}
+     * @param modeName display name of that mode (the id itself if the mode is unknown), resolved here so that the
+     *                 placeholders do not touch the mode registry
+     */
+    private record Counts(int allPlayers, @Nullable String modeId, @NotNull Component modeName, @NotNull ModeStats stats) {
+        static @NotNull Counts read(@NotNull BedWarsNPC npc) {
+            var manager = ModeManager.getInstance();
+            var value = npc.getValue();
+            var modeId = npc.getAction() == BedWarsNPC.Action.JOIN_MODE && value != null && !value.isBlank()
+                    ? value.trim().toLowerCase(Locale.ROOT)
+                    : null;
+            if (modeId == null) {
+                return new Counts(manager.countAllPlayers(), null, Component.empty(), ModeStats.EMPTY);
+            }
+            var mode = manager.getMode(modeId);
+            return new Counts(
+                    manager.countAllPlayers(),
+                    modeId,
+                    mode.map(ModeManager::displayNameComponent).orElseGet(() -> Component.text(modeId)),
+                    mode.map(manager::getStats).orElse(ModeStats.EMPTY)
+            );
+        }
+
+        @NotNull String signature(@NotNull BedWarsNPC npc) {
+            return NpcHologramPlaceholders.signature(String.valueOf(npc.getAction()), npc.getValue(), allPlayers, modeId == null ? null : stats);
+        }
     }
 }

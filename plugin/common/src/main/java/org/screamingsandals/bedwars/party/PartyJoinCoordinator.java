@@ -242,6 +242,14 @@ public class PartyJoinCoordinator {
     }
 
     /**
+     * Whether a forced join ({@link #runBypassing}, for example {@code /bw alljoin}) is running right now. Admin-forced joins
+     * may also enter arenas that are normally reachable only through the mode selection.
+     */
+    public boolean isForcedJoin() {
+        return globalBypassDepth > 0;
+    }
+
+    /**
      * Member states for the planner. {@code target == null}: nobody is ever IN_TARGET (no arena chosen yet).
      */
     private @NotNull List<Member> memberStates(@NotNull BedWarsPlayer leader, @NotNull PartyImpl party, @Nullable GameImpl target) {
@@ -289,6 +297,23 @@ public class PartyJoinCoordinator {
     }
 
     /**
+     * Whether a join of this player into the game would not be refused because of his party (the arena has room for the
+     * whole party and a team can hold it). Always {@code true} for everybody whose join does not bring a party along: no
+     * party, not the leader, bungee mode, game not waiting, already in the game, nobody to pull, pulling disabled for the arena.
+     * Used to steer autojoin / random / group / variant picks away from arenas the party join would be refused in.
+     */
+    public boolean canJoinWithParty(@NotNull BedWarsPlayer player, @NotNull GameImpl game) {
+        var party = partyManager.isEnabled() ? partyManager.getParty(player.getUuid()).orElse(null) : null;
+        if (party == null || !party.isLeader(player.getUuid()) || GameImpl.isBungeeEnabled()
+                || game.getStatus() != GameStatus.WAITING || player.getGame() == game
+                || partyManager.getOnlineSize(party) <= 1
+                || !game.getConfigurationContainer().getOrDefault(PartyConfigKeys.AUTOJOIN_MEMBERS, partyManager.getSettings().autojoinMembers())) {
+            return true;
+        }
+        return planFor(player, party, game).outcome() == PartyJoinPlanner.Outcome.OK;
+    }
+
+    /**
      * Seats a mode join needs before the arena is known: 1 + the members {@link #joinWithParty} would really move.
      */
     public int seatsFor(@NotNull BedWarsPlayer player) {
@@ -299,21 +324,6 @@ public class PartyJoinCoordinator {
         }
         return PartyJoinPlanner.plan(false, memberStates(player, party, null), Integer.MAX_VALUE, 0,
                 partyManager.getSettings().pullFromRunningGames()).needed();
-    }
-
-    /**
-     * Free slots this join needs in the game (party-aware; 1 for a solo player, 0 if he is already in the game).
-     */
-    public int requiredSlots(@NotNull BedWarsPlayer player, @NotNull GameImpl game) {
-        int solo = player.getGame() == game ? 0 : 1;
-        var party = partyManager.isEnabled() ? partyManager.getParty(player.getUuid()).orElse(null) : null;
-        if (party == null || !party.isLeader(player.getUuid()) || GameImpl.isBungeeEnabled()) {
-            return solo;
-        }
-        if (!game.getConfigurationContainer().getOrDefault(PartyConfigKeys.AUTOJOIN_MEMBERS, partyManager.getSettings().autojoinMembers())) {
-            return solo;
-        }
-        return planFor(player, party, game).needed();
     }
 
     private void sendPlanError(@NotNull BedWarsPlayer leader, @NotNull GameImpl game, @NotNull PartyJoinPlanner.Plan plan) {

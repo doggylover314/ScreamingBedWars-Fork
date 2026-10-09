@@ -241,20 +241,20 @@ public class BedwarsExpansion extends PlaceholderExpansion {
                 return null;
             }
             var mode = modeOpt.get();
-            var stats = ModeManager.getInstance().getStats(mode);
             switch (rest.substring(index + 1).toLowerCase(Locale.ROOT)) {
                 case "name":
                     return ModeManager.displayNameComponent(mode);
                 case "id":
                     return Component.text(mode.id());
+                // getStats walks every arena: only the counting operations pay for it
                 case "players":
-                    return Component.text(stats.players());
+                    return Component.text(ModeManager.getInstance().getStats(mode).players());
                 case "waiting":
-                    return Component.text(stats.waitingPlayers());
+                    return Component.text(ModeManager.getInstance().getStats(mode).waitingPlayers());
                 case "playing":
-                    return Component.text(stats.playingPlayers());
+                    return Component.text(ModeManager.getInstance().getStats(mode).playingPlayers());
                 case "arenas":
-                    return Component.text(stats.joinableArenas());
+                    return Component.text(ModeManager.getInstance().getStats(mode).joinableArenas());
                 case "teamsize":
                     return Component.text(mode.teamSize());
                 case "teamcount":
