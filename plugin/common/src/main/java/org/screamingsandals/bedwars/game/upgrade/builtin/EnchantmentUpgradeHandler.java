@@ -20,6 +20,7 @@
 package org.screamingsandals.bedwars.game.upgrade.builtin;
 
 import org.jetbrains.annotations.NotNull;
+import org.screamingsandals.bedwars.api.game.GameStatus;
 import org.screamingsandals.bedwars.events.PlayerRespawnedEventImpl;
 import org.screamingsandals.bedwars.events.UpgradeLevelChangedEventImpl;
 import org.screamingsandals.bedwars.game.TeamImpl;
@@ -56,6 +57,14 @@ public class EnchantmentUpgradeHandler {
         }
 
         var player = event.getPlayer();
-        Tasker.runDelayed(player, () -> UpgradeItemEnchanter.enchantInventory(player, team), 1L, TaskerTime.TICKS);
+        var game = event.getGame();
+        Tasker.runDelayed(player, () -> {
+            // the player may have left in the meantime and got the pre-game inventory back
+            if (!player.isInGame() || player.isSpectator() || player.getGame() != game
+                    || game.getStatus() != GameStatus.RUNNING || game.getPlayerTeam(player) != team) {
+                return;
+            }
+            UpgradeItemEnchanter.enchantInventory(player, team);
+        }, 1L, TaskerTime.TICKS);
     }
 }

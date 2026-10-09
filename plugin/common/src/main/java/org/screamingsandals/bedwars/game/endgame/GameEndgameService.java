@@ -21,6 +21,7 @@ package org.screamingsandals.bedwars.game.endgame;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.screamingsandals.bedwars.BedWarsPlugin;
 import org.screamingsandals.bedwars.api.config.GameConfigurationContainer;
 import org.screamingsandals.bedwars.api.events.TargetInvalidationReason;
 import org.screamingsandals.bedwars.api.game.GameStatus;
@@ -61,6 +62,7 @@ import org.screamingsandals.lib.event.entity.EnderDragonChangePhaseEvent;
 import org.screamingsandals.lib.event.entity.EntityDamageByEntityEvent;
 import org.screamingsandals.lib.event.entity.EntityDamageEvent;
 import org.screamingsandals.lib.event.entity.EntityExplodeEvent;
+import org.screamingsandals.lib.event.world.WorldLoadEvent;
 import org.screamingsandals.lib.lang.Message;
 import org.screamingsandals.lib.plugin.ServiceManager;
 import org.screamingsandals.lib.player.Player;
@@ -69,7 +71,9 @@ import org.screamingsandals.lib.spectator.bossbar.BossBarColor;
 import org.screamingsandals.lib.tasker.Tasker;
 import org.screamingsandals.lib.utils.annotations.Service;
 import org.screamingsandals.lib.utils.annotations.methods.OnDisable;
+import org.screamingsandals.lib.utils.annotations.methods.OnPostEnable;
 import org.screamingsandals.lib.utils.annotations.methods.OnPreDisable;
+import org.screamingsandals.lib.world.Worlds;
 import org.screamingsandals.lib.world.gamerule.GameRuleType;
 
 import java.util.ArrayList;
@@ -101,9 +105,17 @@ public class GameEndgameService {
      * World name to override (main thread only).
      */
     private final Map<String, MobGriefingOverride> mobGriefing = new HashMap<>();
+    /**
+     * Created on first use (needs the plugin data folder).
+     */
+    private @Nullable GameRuleRestoreStore gameRuleStore;
 
     private static final class EndgameRuntime {
         volatile boolean endedByTime;
+        /**
+         * Sudden death already read the Dragon Buff levels of the teams.
+         */
+        volatile boolean dragonBuffLocked;
         volatile @Nullable SuddenDeathSession suddenDeath;
     }
 
@@ -241,8 +253,13 @@ public class GameEndgameService {
         for (int i = 0; i < alive.size(); i++) {
             requested[i] = settings.dragonsPerTeam() + Math.max(0, DragonBuffUpgradeDefinition.getExtraDragons(alive.get(i))); // C2
         }
+        rt.dragonBuffLocked = true; // the levels were read: a Dragon Buff bought from now on would change nothing
         int[] allocated = DragonAllocation.allocate(requested, settings.dragonMaxTotal());
         int total = Arrays.stream(allocated).sum();
+        if (total <= 0) { // dragons-per-team 0 and no Dragon Buff: no session, watchdog, game rule change or announcement
+            Debug.info(game.getName() + ": sudden death skipped, no dragons to spawn");
+            return;
+        }
 
         var session = new SuddenDeathSession(this, game, settings, dragons);
         rt.suddenDeath = session;
@@ -312,6 +329,14 @@ public class GameEndgameService {
         return rt != null && rt.suddenDeath != null;
     }
 
+    /**
+     * @return true once sudden death of this run has read the Dragon Buff levels (the dragon counts are fixed)
+     */
+    public boolean isDragonBuffLocked(@NotNull GameImpl game) {
+        var rt = runtimes.get(game.getUuid());
+        return rt != null && rt.dragonBuffLocked;
+    }
+
     public boolean isManagedDragon(@Nullable Entity entity) {
         return entity != null && dragons.containsKey(entity.getUniqueId());
     }
@@ -331,22 +356,34 @@ public class GameEndgameService {
 
     /**
      * Sets the world game rule {@code mob_griefing} to true for the duration of a sudden death (reference counted per
-     * world, main thread only).
+     * world, main thread only). The original value is also written to a file before the change, see {@link GameRuleRestoreStore}.
      */
     void acquireMobGriefing(@NotNull SuddenDeathSession session) {
         try {
             var world = session.game.getWorld();
-            var rule = GameRuleType.of("mob_griefing");
-            var override = mobGriefing.computeIfAbsent(world.getName(), name -> new MobGriefingOverride());
-            boolean first = override.refs++ == 0;
-            session.mobGriefingAcquired = true; // the reference is taken: release must give it back even if the world calls throw
-            if (first) {
+            var worldName = world.getName();
+            var override = mobGriefing.get(worldName);
+            if (override == null) {
+                var rule = GameRuleType.of("mob_griefing");
                 Object previous = world.getGameRuleValue(rule);
-                override.previous = previous;
                 if (!Boolean.TRUE.equals(previous)) {
-                    world.setGameRuleValue(rule, true);
+                    rememberGameRule(worldName, previous);
+                    boolean changed = false;
+                    try {
+                        world.setGameRuleValue(rule, true);
+                        changed = true;
+                    } finally {
+                        if (!changed) {
+                            forgetGameRule(worldName); // nothing was overridden
+                        }
+                    }
                 }
+                override = new MobGriefingOverride();
+                override.previous = previous;
+                mobGriefing.put(worldName, override);
             }
+            override.refs++; // only after the world is in the wanted state: a failed acquire leaves nothing to release
+            session.mobGriefingAcquired = true;
         } catch (Throwable t) {
             Debug.warn("Could not change mob_griefing: " + t, true); // game rule API differences on very old versions
         }
@@ -367,8 +404,78 @@ public class GameEndgameService {
             if (override.previous != null && !Boolean.TRUE.equals(override.previous)) {
                 world.setGameRuleValue(GameRuleType.of("mob_griefing"), override.previous);
             }
+            forgetGameRule(world.getName()); // restored; if the call above threw, the entry stays for the next start
         } catch (Throwable t) {
             Debug.warn("Could not change mob_griefing: " + t, true);
+        }
+    }
+
+    private @NotNull GameRuleRestoreStore gameRuleStore() {
+        var store = gameRuleStore;
+        if (store == null) {
+            store = new GameRuleRestoreStore(BedWarsPlugin.getInstance().getPluginDescription().dataFolder().resolve("endgame-gamerules.properties"));
+            gameRuleStore = store;
+        }
+        return store;
+    }
+
+    /**
+     * Writes the value to restore BEFORE the rule is changed, so the file exists whenever the rule is overridden.
+     */
+    private void rememberGameRule(@NotNull String worldName, @Nullable Object previous) {
+        if (!(previous instanceof Boolean value)) {
+            return; // unknown or not a boolean: the in-memory restore still works
+        }
+        try {
+            gameRuleStore().put(worldName, value);
+        } catch (Throwable t) {
+            Debug.warn("Could not save the original mob_griefing of " + worldName + ": " + t, true); // never breaks the sudden death
+        }
+    }
+
+    private void forgetGameRule(@NotNull String worldName) {
+        try {
+            gameRuleStore().remove(worldName);
+        } catch (Throwable t) {
+            Debug.warn("Could not update the saved mob_griefing of " + worldName + ": " + t, true);
+        }
+    }
+
+    /**
+     * A crash, kill or power loss during a sudden death left {@code mob_griefing} overridden in the world data: puts the saved
+     * original value back. Worlds that are not loaded yet are handled by {@link #onWorldLoad(WorldLoadEvent)}.
+     */
+    @OnPostEnable
+    public void restoreLeftoverGameRules() {
+        try {
+            for (var worldName : gameRuleStore().load().keySet()) {
+                restoreLeftoverGameRule(worldName);
+            }
+        } catch (Throwable t) {
+            Debug.warn("Could not restore the saved mob_griefing values: " + t, true);
+        }
+    }
+
+    @OnEvent
+    public void onWorldLoad(@NotNull WorldLoadEvent event) {
+        restoreLeftoverGameRule(event.world().getName());
+    }
+
+    private void restoreLeftoverGameRule(@NotNull String worldName) {
+        try {
+            if (mobGriefing.containsKey(worldName)) {
+                return; // a sudden death of this run is overriding it right now
+            }
+            var saved = gameRuleStore().get(worldName);
+            var world = saved != null ? Worlds.getWorld(worldName) : null;
+            if (world == null) {
+                return; // nothing saved, or the world is not loaded (yet)
+            }
+            world.setGameRuleValue(GameRuleType.of("mob_griefing"), saved);
+            gameRuleStore().remove(worldName);
+            Debug.info("Restored mob_griefing=" + saved + " of world " + worldName + " (left over from an interrupted sudden death)");
+        } catch (Throwable t) {
+            Debug.warn("Could not restore mob_griefing of " + worldName + ": " + t, true);
         }
     }
 
