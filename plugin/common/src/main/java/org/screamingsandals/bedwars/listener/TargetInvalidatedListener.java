@@ -50,6 +50,7 @@ public class TargetInvalidatedListener {
         var team = event.getTeam();
         var target = event.getTarget();
         var reason = event.getReason();
+        var massDestruction = reason == TargetInvalidationReason.GAME_EVENT; // announced once by GameEndgameService
 
         var initiator = event.getInitiator();
 
@@ -79,10 +80,13 @@ public class TargetInvalidatedListener {
                         .placeholder("team", Component.text(team.getName(), team.getColor().getTextColor()))
                         .prefixOrDefault(game.getCustomPrefixComponent())
                         .send(allPlayers);
-            } else {
+            } else if (!massDestruction) {
                 Component coloredDestroyer = Component.text("explosion");
                 if (initiator != null) {
-                    coloredDestroyer = initiator.getDisplayName().withColor(game.getPlayerTeam(PlayerManagerImpl.getInstance().getPlayer(initiator.getUuid()).orElseThrow()).getColor().getTextColor());
+                    var initiatorTeam = game.getPlayerTeam(PlayerManagerImpl.getInstance().getPlayer(initiator.getUuid()).orElseThrow());
+                    coloredDestroyer = initiatorTeam != null
+                            ? initiator.getDisplayName().withColor(initiatorTeam.getColor().getTextColor())
+                            : initiator.getDisplayName();
                 }
                 for (var player : allPlayers) {
                     if (!cpsTitles || game.getPlayerTeam(player) == team) {
@@ -112,25 +116,27 @@ public class TargetInvalidatedListener {
                 }
             }
 
-            for (var player : allPlayers) {
-                if (game.getPlayerTeam(player) == team) {
-                    player.playSound(
-                            SoundStart.sound(
-                                    ResourceLocation.of(MainConfig.getInstance().node("sounds", "my_bed_destroyed", "sound").getString("entity.ender_dragon.growl")),
-                                    SoundSource.AMBIENT,
-                                    (float) MainConfig.getInstance().node("sounds", "my_bed_destroyed", "volume").getDouble(1),
-                                    (float) MainConfig.getInstance().node("sounds", "my_bed_destroyed", "pitch").getDouble(1)
-                            )
-                    );
-                } else if (reason != TargetInvalidationReason.TIMEOUT) {
-                    player.playSound(
-                            SoundStart.sound(
-                                    ResourceLocation.of(MainConfig.getInstance().node("sounds", "bed_destroyed", "sound").getString("entity.ender_dragon.growl")),
-                                    SoundSource.AMBIENT,
-                                    (float) MainConfig.getInstance().node("sounds", "bed_destroyed", "volume").getDouble(1),
-                                    (float) MainConfig.getInstance().node("sounds", "bed_destroyed", "pitch").getDouble(1)
-                            )
-                    );
+            if (!massDestruction) {
+                for (var player : allPlayers) {
+                    if (game.getPlayerTeam(player) == team) {
+                        player.playSound(
+                                SoundStart.sound(
+                                        ResourceLocation.of(MainConfig.getInstance().node("sounds", "my_bed_destroyed", "sound").getString("entity.ender_dragon.growl")),
+                                        SoundSource.AMBIENT,
+                                        (float) MainConfig.getInstance().node("sounds", "my_bed_destroyed", "volume").getDouble(1),
+                                        (float) MainConfig.getInstance().node("sounds", "my_bed_destroyed", "pitch").getDouble(1)
+                                )
+                        );
+                    } else if (reason != TargetInvalidationReason.TIMEOUT) {
+                        player.playSound(
+                                SoundStart.sound(
+                                        ResourceLocation.of(MainConfig.getInstance().node("sounds", "bed_destroyed", "sound").getString("entity.ender_dragon.growl")),
+                                        SoundSource.AMBIENT,
+                                        (float) MainConfig.getInstance().node("sounds", "bed_destroyed", "volume").getDouble(1),
+                                        (float) MainConfig.getInstance().node("sounds", "bed_destroyed", "pitch").getDouble(1)
+                                )
+                        );
+                    }
                 }
             }
 

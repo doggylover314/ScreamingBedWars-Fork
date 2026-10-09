@@ -34,14 +34,15 @@ import org.screamingsandals.lib.world.Location;
 import org.screamingsandals.lib.world.chunk.Chunk;
 import org.screamingsandals.lib.block.snapshot.BlockSnapshot;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.Set;
 
 public class RegionImpl implements Region {
-    private final List<Location> builtBlocks = new ArrayList<>();
-    private List<Location> originalBlocksWaterlogged = new ArrayList<>();
+    private final Set<Location> builtBlocks = new LinkedHashSet<>(); // O(1) contains; Location is a Lombok @Data value class
+    private final Set<Location> originalBlocksWaterlogged = new HashSet<>();
     private final Map<Location, BlockSnapshot> brokenOriginalBlocks = new HashMap<>();
 
     public boolean isLocationModifiedDuringGame(Location loc) {

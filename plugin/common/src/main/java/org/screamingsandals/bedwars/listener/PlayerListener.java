@@ -41,6 +41,7 @@ import org.screamingsandals.bedwars.events.PlayerRespawnedEventImpl;
 import org.screamingsandals.bedwars.events.TeamChestOpenEventImpl;
 import org.screamingsandals.bedwars.game.GameImpl;
 import org.screamingsandals.bedwars.game.GameManagerImpl;
+import org.screamingsandals.bedwars.game.endgame.GameEndgameService;
 import org.screamingsandals.bedwars.game.target.TargetBlockImpl;
 import org.screamingsandals.bedwars.lang.LangKeys;
 import org.screamingsandals.bedwars.lib.debug.Debug;
@@ -783,7 +784,7 @@ public class PlayerListener {
                 if (event.entity().getEntityType().is("armor_stand")) {
                     var damager = ((EntityDamageByEntityEvent) event).damager();
                     if (damager.getEntityType().is("player")) {
-                        var player = (Player) event.entity();
+                        var player = (Player) damager;
                         if (PlayerManagerImpl.getInstance().isPlayerInGame(player)) {
                             var gPlayer = player.as(BedWarsPlayer.class);
                             if (gPlayer.getGame().getStatus() == GameStatus.WAITING || gPlayer.isSpectator()) {
@@ -833,7 +834,9 @@ public class PlayerListener {
                 } else if (event instanceof EntityDamageByEntityEvent) {
                     var edbee = (EntityDamageByEntityEvent) event;
 
-                    if (game.getConfigurationContainer().getOrDefault(GameConfigurationContainer.TNT_JUMP_ENABLED, false) && edbee.damager().getEntityType().is("tnt")) {
+                    if (GameEndgameService.getInstance().isManagedDragon(edbee.damager())) {
+                        GameEndgameService.getInstance().handleDragonDamageToPlayer(game, gPlayer, edbee);
+                    } else if (game.getConfigurationContainer().getOrDefault(GameConfigurationContainer.TNT_JUMP_ENABLED, false) && edbee.damager().getEntityType().is("tnt")) {
                         final var tnt = (PrimedTnt) edbee.damager();
                         final var playerSource = tnt.source();
                         if (playerSource != null) {
@@ -853,7 +856,8 @@ public class PlayerListener {
                                 explosionAffectedPlayers.add(player);
                             }
                             if (!game.getConfigurationContainer().getOrDefault(GameConfigurationContainer.TNT_JUMP_TEAM_DAMAGE, true)) {
-                                if (game.getPlayerTeam(gPlayer).equals(game.getPlayerTeam(PlayerManagerImpl.getInstance().getPlayer(playerSource.getUniqueId()).orElseThrow()))) {
+                                var victimTeam = game.getPlayerTeam(gPlayer);
+                                if (victimTeam != null && victimTeam.equals(game.getPlayerTeam(PlayerManagerImpl.getInstance().getPlayer(playerSource.getUniqueId()).orElseThrow()))) {
                                     event.cancelled(true);
                                 }
                             }
