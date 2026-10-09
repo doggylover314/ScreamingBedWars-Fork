@@ -17,11 +17,23 @@
  * along with Screaming BedWars. If not, see <https://www.gnu.org/licenses/>.
  */
 
-@Init(services = {
-        PartyManagerImpl.class,
-        PartyJoinCoordinator.class,
-        PartyEventListener.class
-})
 package org.screamingsandals.bedwars.party;
 
-import org.screamingsandals.lib.utils.annotations.Init;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
+import java.util.List;
+import java.util.UUID;
+
+/**
+ * Something that happened in a party and who has to be told about it (pure data).
+ *
+ * @param leader     leader at event time
+ * @param recipients never empty (the registry skips events without recipients)
+ */
+public record PartyEvent(@NotNull PartyEventType type, @NotNull UUID partyId,
+                         @NotNull UUID leader, @NotNull String leaderName,
+                         @Nullable UUID subject, @Nullable String subjectName,
+                         @Nullable UUID other, @Nullable String otherName,
+                         @NotNull List<@NotNull UUID> recipients) {
+}

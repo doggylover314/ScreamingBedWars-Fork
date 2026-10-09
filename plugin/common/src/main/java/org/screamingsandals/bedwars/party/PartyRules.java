@@ -17,11 +17,14 @@
  * along with Screaming BedWars. If not, see <https://www.gnu.org/licenses/>.
  */
 
-@Init(services = {
-        PartyManagerImpl.class,
-        PartyJoinCoordinator.class,
-        PartyEventListener.class
-})
 package org.screamingsandals.bedwars.party;
 
-import org.screamingsandals.lib.utils.annotations.Init;
+import org.jetbrains.annotations.NotNull;
+
+/**
+ * Millisecond rules for the {@link PartyRegistry}. Negative grace / timeout = never; {@code maxSize <= 0} = unlimited.
+ */
+public record PartyRules(int maxSize, boolean membersCanInvite, long inviteExpireMillis,
+                         long leaderGraceMillis, @NotNull LeaderOfflineAction leaderOfflineAction,
+                         long memberOfflineMillis) {
+}

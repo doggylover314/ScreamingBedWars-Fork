@@ -17,11 +17,28 @@
  * along with Screaming BedWars. If not, see <https://www.gnu.org/licenses/>.
  */
 
-@Init(services = {
-        PartyManagerImpl.class,
-        PartyJoinCoordinator.class,
-        PartyEventListener.class
-})
 package org.screamingsandals.bedwars.party;
 
-import org.screamingsandals.lib.utils.annotations.Init;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
+import java.util.List;
+
+/**
+ * Result of a {@link PartyRegistry} operation: either an error or the (possibly dissolved, then null) party plus the
+ * events that have to be delivered.
+ */
+public record PartyResult(@Nullable PartyError error, @Nullable PartyImpl party, @NotNull List<@NotNull PartyEvent> events) {
+
+    public static @NotNull PartyResult ok(@Nullable PartyImpl party, @NotNull List<PartyEvent> events) {
+        return new PartyResult(null, party, List.copyOf(events));
+    }
+
+    public static @NotNull PartyResult fail(@NotNull PartyError error) {
+        return new PartyResult(error, null, List.of());
+    }
+
+    public boolean isSuccess() {
+        return error == null;
+    }
+}
