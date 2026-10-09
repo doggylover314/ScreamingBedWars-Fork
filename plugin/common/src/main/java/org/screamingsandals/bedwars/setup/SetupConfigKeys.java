@@ -37,7 +37,7 @@ public final class SetupConfigKeys {
     public static final ConfigurationKey<String> EMERALD_SPAWNER_TYPE = ConfigurationKey.of(String.class, "setup", "emerald-spawner-type");
     public static final ConfigurationKey<String> SHOP_FILE = ConfigurationKey.of(String.class, "setup", "shop-file");
     public static final ConfigurationKey<String> UPGRADE_SHOP_FILE = ConfigurationKey.of(String.class, "setup", "upgrade-shop-file");
-    public static final List<String> DEFAULT_TEAM_GENERATOR_TYPES = List.of("iron", "gold");
+    public static final List<String> DEFAULT_TEAM_GENERATOR_TYPES = List.of("bronze"); // same as the MainConfig default of setup.team-generator-types
 
     private SetupConfigKeys() {
     }

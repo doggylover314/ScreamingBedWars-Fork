@@ -982,7 +982,8 @@ public class GameImpl implements LocalGame {
             return;
         }
 
-        if (requiresModeSelection() && !player.hasPermission(BedWarsPermission.ADMIN_PERMISSION.asPermission())) {
+        if (requiresModeSelection() && !player.hasPermission(BedWarsPermission.ADMIN_PERMISSION.asPermission())
+                && !PartyJoinCoordinator.getInstance().isForcedJoin()) { // /bw alljoin may enter mode-only arenas
             Message.of(ForkLangKeys.MODES_ARENA_MODE_SELECTION_ONLY)
                     .placeholder("arena", getDisplayNameComponent())
                     .prefixOrDefault(getCustomPrefixComponent())

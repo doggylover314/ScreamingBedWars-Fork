@@ -503,10 +503,11 @@ public class MiscUtils {
     }
 
     /**
-     * Whether the free slots of the arena cover everybody the player's join would bring (1 for a player without party).
+     * Whether the arena has room for everybody the player's join would bring and a team can hold the party
+     * (always true for a player without party).
      */
     private boolean partyFits(BedWarsPlayer joiner, GameImpl game) {
-        return PartyJoinCoordinator.getInstance().requiredSlots(joiner, game) <= game.getMaxPlayers() - game.countConnectedPlayers();
+        return PartyJoinCoordinator.getInstance().canJoinWithParty(joiner, game);
     }
 
     /**
