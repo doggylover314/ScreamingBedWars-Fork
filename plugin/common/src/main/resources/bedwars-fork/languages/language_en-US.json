@@ -112,7 +112,7 @@
         "triggered_subtitle": "<yellow>Your <trap> <yellow>has been triggered!",
         "triggered_team": "<red><bold>TRAP!</bold> <yellow>Your <trap> <yellow>has been triggered!",
         "alarm_team": "<red><bold>ALARM!</bold> <player> <gray>(<intruder-team><gray>) <yellow>has entered your base!",
-        "triggered_intruder": "<yellow>You triggered <team><yellow>'s <trap><yellow>!",
+        "triggered_intruder": "<yellow>You triggered <team><yellow>'s <trap>",
         "names": {
           "its_a_trap": "It's a Trap!",
           "counter_offensive": "Counter-Offensive Trap",
