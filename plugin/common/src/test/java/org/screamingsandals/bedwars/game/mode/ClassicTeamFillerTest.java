@@ -26,10 +26,12 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -142,5 +144,71 @@ class ClassicTeamFillerTest {
         var result = ClassicTeamFiller.fill(slots, List.of(single));
         assertEquals(List.of(single.members().get(0)), result.unplaced());
         assertTrue(result.placements().isEmpty());
+    }
+
+    @Test
+    void partyThatJoinedAfterSoloPlayersIsStillKeptTogether() {
+        // 2 teams x 2: Alice, Bob, then a party of 2 -> the party must not be split
+        var twoTeams = List.of(new TeamSlot("Red", 0, 2, -1), new TeamSlot("Blue", 0, 2, -1));
+        var alice = group("alice", 1, null);
+        var bob = group("bob", 1, null);
+        var party = group("party", 2, null);
+        var result = ClassicTeamFiller.fill(twoTeams, List.of(alice, bob, party));
+        var teams = teamOf(result);
+        assertTrue(result.splitGroups().isEmpty());
+        assertTrue(result.unplaced().isEmpty());
+        assertEquals(teams.get(party.members().get(0)), teams.get(party.members().get(1)));
+        assertEquals(teams.get(alice.members().get(0)), teams.get(bob.members().get(0)));
+        assertNotEquals(teams.get(alice.members().get(0)), teams.get(party.members().get(0)));
+    }
+
+    @Test
+    void partyOfThreeIsKeptTogetherAfterTwoSolosInTeamsOfThree() {
+        var twoTeams = List.of(new TeamSlot("Red", 0, 3, -1), new TeamSlot("Blue", 0, 3, -1));
+        var a = group("a", 1, null);
+        var b = group("b", 1, null);
+        var party = group("party", 3, null);
+        var result = ClassicTeamFiller.fill(twoTeams, List.of(a, b, party));
+        var teams = teamOf(result);
+        assertTrue(result.splitGroups().isEmpty());
+        assertEquals(1, party.members().stream().map(teams::get).distinct().count());
+        assertNotEquals(teams.get(party.members().get(0)), teams.get(a.members().get(0)));
+    }
+
+    @Test
+    void biggerPartiesArePlacedFirstAndSolosFillTheRest() {
+        var twoTeams = List.of(new TeamSlot("Red", 0, 3, -1), new TeamSlot("Blue", 0, 3, -1));
+        var solo = group("solo", 1, null);
+        var duo = group("duo", 2, null);
+        var trio = group("trio", 3, null);
+        var result = ClassicTeamFiller.fill(twoTeams, List.of(solo, duo, trio));
+        var teams = teamOf(result);
+        assertTrue(result.splitGroups().isEmpty());
+        assertEquals(1, trio.members().stream().map(teams::get).distinct().count());
+        assertEquals(1, duo.members().stream().map(teams::get).distinct().count());
+        assertEquals(teams.get(duo.members().get(0)), teams.get(solo.members().get(0)));
+    }
+
+    @Test
+    void memberFollowingHisPartyTeamIsPlacedBeforeOtherSolos() {
+        var slots = List.of(new TeamSlot("Red", 1, 2, 0), new TeamSlot("Blue", 1, 2, 1));
+        var stranger = group("stranger", 1, null);
+        var follower = group("follower", 1, "Red");
+        var result = ClassicTeamFiller.fill(slots, List.of(stranger, follower));
+        var teams = teamOf(result);
+        assertEquals("Red", teams.get(follower.members().get(0)));
+        assertEquals("Blue", teams.get(stranger.members().get(0)));
+    }
+
+    @Test
+    void oversizedGroupIsSplitAfterTheGroupsThatFit() {
+        var twoTeams = List.of(new TeamSlot("Red", 0, 3, -1), new TeamSlot("Blue", 0, 3, -1));
+        var big = group("big", 4, null);
+        var duo = group("duo", 2, null);
+        var result = ClassicTeamFiller.fill(twoTeams, List.of(big, duo));
+        var teams = teamOf(result);
+        assertEquals(Set.of("big"), result.splitGroups());
+        assertTrue(result.unplaced().isEmpty());
+        assertEquals(1, duo.members().stream().map(teams::get).distinct().count());
     }
 }

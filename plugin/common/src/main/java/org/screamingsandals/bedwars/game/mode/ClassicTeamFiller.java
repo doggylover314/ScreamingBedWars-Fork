@@ -81,13 +81,29 @@ public final class ClassicTeamFiller {
         return slots.stream().filter(s -> !s.active() && s.maxPlayers() >= size).map(TeamSlot::name).findFirst().orElse(null);
     }
 
+    /**
+     * Placement order: groups that already have a team to follow first (their room is reserved in that team), then the
+     * groups that fit a team, the biggest first so that parties are not split by solos that arrived earlier, and last
+     * the groups too big for any team (they are split anyway and fill the remaining seats). Stable, so equal groups
+     * (all solos) keep their join order.
+     */
+    private static @NotNull List<PlayerGroup> placementOrder(@NotNull List<TeamSlot> slots, @NotNull List<PlayerGroup> groups) {
+        int largestTeam = slots.stream().mapToInt(TeamSlot::maxPlayers).max().orElse(0);
+        var ordered = new ArrayList<>(groups);
+        ordered.sort(Comparator
+                .comparingInt((PlayerGroup g) -> g.preferredTeam() != null ? 0 : 1)
+                .thenComparingInt(g -> g.size() > largestTeam ? 1 : 0)
+                .thenComparing(Comparator.comparingInt(PlayerGroup::size).reversed()));
+        return ordered;
+    }
+
     public static @NotNull Result fill(@NotNull List<TeamSlot> slots, @NotNull List<PlayerGroup> groups) {
         var work = new ArrayList<>(slots); // replaced by updated copies while placing
         int nextActivation = slots.stream().mapToInt(TeamSlot::activationIndex).max().orElse(-1) + 1;
         var placements = new ArrayList<Placement>();
         var unplaced = new ArrayList<UUID>();
         var split = new LinkedHashSet<String>();
-        for (var group : groups) {
+        for (var group : placementOrder(slots, groups)) {
             String target = null;
             if (group.preferredTeam() != null) {
                 var pref = find(work, group.preferredTeam());
