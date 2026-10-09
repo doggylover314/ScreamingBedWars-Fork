@@ -29,6 +29,16 @@ public class BedUtils {
             return null;
         }
 
+        var data = head.block();
+        var offset = BedGeometry.otherHalf(data.get("part"), data.get("facing")); // exact, from the block states
+        if (offset != null) {
+            var candidate = head.location().add(offset[0], 0, offset[1]).getBlock();
+            if (isBedBlock(candidate)) {
+                return candidate;
+            }
+        }
+
+        // legacy fallback (unchanged old scan) for versions/blocks without part/facing states
         if (isBedBlock(head.location().add(BlockFace.EAST).getBlock())) {
             return head.location().add(BlockFace.EAST).getBlock();
         } else if (isBedBlock(head.location().add(BlockFace.WEST).getBlock())) {

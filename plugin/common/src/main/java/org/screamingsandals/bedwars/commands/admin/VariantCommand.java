@@ -21,11 +21,14 @@ package org.screamingsandals.bedwars.commands.admin;
 
 import cloud.commandframework.Command;
 import cloud.commandframework.CommandManager;
+import cloud.commandframework.arguments.standard.StringArgument;
+import org.screamingsandals.bedwars.setup.SetupOperations;
+import org.screamingsandals.bedwars.variants.VariantManagerImpl;
 import org.screamingsandals.lib.sender.CommandSender;
 import org.screamingsandals.lib.utils.annotations.Service;
 
 /**
- * FOUNDATION-SKELETON: replaced by package P8 (PLAN.md).
+ * {@code /bw admin <arena> variant <variant>}: changes the variant of an arena in edit mode.
  */
 @Service
 public class VariantCommand extends BaseAdminSubCommand {
@@ -35,5 +38,12 @@ public class VariantCommand extends BaseAdminSubCommand {
 
     @Override
     public void construct(CommandManager<CommandSender> manager, Command.Builder<CommandSender> commandSenderWrapperBuilder) {
+        manager.command(
+                commandSenderWrapperBuilder
+                        .argument(StringArgument.<CommandSender>newBuilder("variant")
+                                .withSuggestionsProvider((c, s) -> VariantManagerImpl.getInstance().getVariantNames()))
+                        .handler(ctx -> editMode(ctx, (sender, game) ->
+                                SetupOperations.changeVariant(sender, game, ctx.get("variant"))))
+        );
     }
 }

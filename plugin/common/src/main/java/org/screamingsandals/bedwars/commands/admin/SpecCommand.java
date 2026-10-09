@@ -21,12 +21,15 @@ package org.screamingsandals.bedwars.commands.admin;
 
 import cloud.commandframework.Command;
 import cloud.commandframework.CommandManager;
+import org.jetbrains.annotations.NotNull;
+import org.screamingsandals.bedwars.game.GameImpl;
 import org.screamingsandals.bedwars.lang.LangKeys;
 import org.screamingsandals.bedwars.utils.ArenaUtils;
 import org.screamingsandals.lib.lang.Message;
 import org.screamingsandals.lib.player.Player;
 import org.screamingsandals.lib.sender.CommandSender;
 import org.screamingsandals.lib.utils.annotations.Service;
+import org.screamingsandals.lib.world.Location;
 
 @Service
 public class SpecCommand extends BaseAdminSubCommand {
@@ -38,33 +41,38 @@ public class SpecCommand extends BaseAdminSubCommand {
     public void construct(CommandManager<CommandSender> manager, Command.Builder<CommandSender> commandSenderWrapperBuilder) {
         manager.command(
                 commandSenderWrapperBuilder
-                        .handler(commandContext -> editMode(commandContext, (sender, game) -> {
-                            var loc = sender.as(Player.class).getLocation();
-
-                            if (game.getPos1() == null || game.getPos2() == null) {
-                                sender.sendMessage(Message.of(LangKeys.ADMIN_ARENA_EDIT_ERRORS_SET_BOUNDS_FIRST).defaultPrefix());
-                                return;
-                            }
-                            if (!game.getWorld().equals(loc.getWorld())) {
-                                sender.sendMessage(Message.of(LangKeys.ADMIN_ARENA_EDIT_ERRORS_MUST_BE_IN_SAME_WORLD).defaultPrefix());
-                                return;
-                            }
-                            if (!ArenaUtils.isInArea(loc, game.getPos1(), game.getPos2())) {
-                                sender.sendMessage(Message.of(LangKeys.ADMIN_ARENA_EDIT_ERRORS_MUST_BE_IN_BOUNDS).defaultPrefix());
-                                return;
-                            }
-                            game.setSpecSpawn(loc);
-                            sender.sendMessage(
-                                    Message
-                                    .of(LangKeys.ADMIN_ARENA_EDIT_SUCCESS_SPEC_SPAWN_SET)
-                                            .defaultPrefix()
-                                            .placeholder("x", loc.getX(), 2)
-                                            .placeholder("y", loc.getY(), 2)
-                                            .placeholder("z", loc.getZ(), 2)
-                                            .placeholder("yaw", loc.getYaw(), 5)
-                                            .placeholder("pitch", loc.getPitch(), 5)
-                            );
-                        }))
+                        .handler(commandContext -> editMode(commandContext,
+                                (sender, game) -> setSpecSpawn(sender, game, sender.as(Player.class).getLocation())))
         );
+    }
+
+    /**
+     * Sets the spectator spawn. Returns true when it was set.
+     */
+    public static boolean setSpecSpawn(@NotNull CommandSender sender, @NotNull GameImpl game, @NotNull Location loc) {
+        if (game.getPos1() == null || game.getPos2() == null) {
+            sender.sendMessage(Message.of(LangKeys.ADMIN_ARENA_EDIT_ERRORS_SET_BOUNDS_FIRST).defaultPrefix());
+            return false;
+        }
+        if (!game.getWorld().equals(loc.getWorld())) {
+            sender.sendMessage(Message.of(LangKeys.ADMIN_ARENA_EDIT_ERRORS_MUST_BE_IN_SAME_WORLD).defaultPrefix());
+            return false;
+        }
+        if (!ArenaUtils.isInArea(loc, game.getPos1(), game.getPos2())) {
+            sender.sendMessage(Message.of(LangKeys.ADMIN_ARENA_EDIT_ERRORS_MUST_BE_IN_BOUNDS).defaultPrefix());
+            return false;
+        }
+        game.setSpecSpawn(loc);
+        sender.sendMessage(
+                Message
+                        .of(LangKeys.ADMIN_ARENA_EDIT_SUCCESS_SPEC_SPAWN_SET)
+                        .defaultPrefix()
+                        .placeholder("x", loc.getX(), 2)
+                        .placeholder("y", loc.getY(), 2)
+                        .placeholder("z", loc.getZ(), 2)
+                        .placeholder("yaw", loc.getYaw(), 5)
+                        .placeholder("pitch", loc.getPitch(), 5)
+        );
+        return true;
     }
 }

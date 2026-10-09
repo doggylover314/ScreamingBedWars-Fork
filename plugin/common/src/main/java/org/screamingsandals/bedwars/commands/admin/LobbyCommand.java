@@ -21,11 +21,15 @@ package org.screamingsandals.bedwars.commands.admin;
 
 import cloud.commandframework.Command;
 import cloud.commandframework.CommandManager;
+import org.jetbrains.annotations.NotNull;
+import org.screamingsandals.bedwars.game.GameImpl;
+import org.screamingsandals.bedwars.lang.ForkLangKeys;
 import org.screamingsandals.bedwars.lang.LangKeys;
 import org.screamingsandals.lib.lang.Message;
 import org.screamingsandals.lib.player.Player;
 import org.screamingsandals.lib.sender.CommandSender;
 import org.screamingsandals.lib.utils.annotations.Service;
+import org.screamingsandals.lib.world.Location;
 
 @Service
 public class LobbyCommand extends BaseAdminSubCommand {
@@ -37,21 +41,34 @@ public class LobbyCommand extends BaseAdminSubCommand {
     public void construct(CommandManager<CommandSender> manager, Command.Builder<CommandSender> commandSenderWrapperBuilder) {
         manager.command(
                 commandSenderWrapperBuilder
-                        .handler(commandContext -> editMode(commandContext, (sender, game) -> {
-                            var player = sender.as(Player.class);
-                            var loc = player.getLocation();
-
-                            game.setLobbySpawn(loc);
-                            Message
-                                    .of(LangKeys.ADMIN_ARENA_EDIT_SUCCESS_LOBBY_SPAWN_SET)
-                                    .defaultPrefix()
-                                    .placeholder("x", loc.getX(), 2)
-                                    .placeholder("y", loc.getY(), 2)
-                                    .placeholder("z", loc.getZ(), 2)
-                                    .placeholder("yaw", loc.getYaw(), 5)
-                                    .placeholder("pitch", loc.getPitch(), 5)
-                                    .send(sender);
-                        }))
+                        .handler(commandContext -> editMode(commandContext,
+                                (sender, game) -> setLobbySpawn(sender, game, sender.as(Player.class).getLocation())))
         );
+    }
+
+    /**
+     * Sets the waiting lobby spawn. Returns true when it was set.
+     */
+    public static boolean setLobbySpawn(@NotNull CommandSender sender, @NotNull GameImpl game, @NotNull Location loc) {
+        // The lobby region is read with the lobby spawn's world (LocalGameLoaderImpl), so a lobby moved to
+        // another world invalidates lobbypos1/2: clear them and tell the admin.
+        if ((game.getLobbyPos1() != null && !game.getLobbyPos1().getWorld().equals(loc.getWorld()))
+                || (game.getLobbyPos2() != null && !game.getLobbyPos2().getWorld().equals(loc.getWorld()))) {
+            game.setLobbyPos1(null);
+            game.setLobbyPos2(null);
+            sender.sendMessage(Message.of(ForkLangKeys.SETUP_LOBBY_REGION_CLEARED).defaultPrefix());
+        }
+
+        game.setLobbySpawn(loc);
+        Message
+                .of(LangKeys.ADMIN_ARENA_EDIT_SUCCESS_LOBBY_SPAWN_SET)
+                .defaultPrefix()
+                .placeholder("x", loc.getX(), 2)
+                .placeholder("y", loc.getY(), 2)
+                .placeholder("z", loc.getZ(), 2)
+                .placeholder("yaw", loc.getYaw(), 5)
+                .placeholder("pitch", loc.getPitch(), 5)
+                .send(sender);
+        return true;
     }
 }

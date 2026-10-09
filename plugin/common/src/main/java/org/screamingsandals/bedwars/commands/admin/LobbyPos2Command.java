@@ -21,11 +21,14 @@ package org.screamingsandals.bedwars.commands.admin;
 
 import cloud.commandframework.Command;
 import cloud.commandframework.CommandManager;
+import org.jetbrains.annotations.NotNull;
+import org.screamingsandals.bedwars.game.GameImpl;
 import org.screamingsandals.bedwars.lang.LangKeys;
 import org.screamingsandals.lib.lang.Message;
 import org.screamingsandals.lib.player.Player;
 import org.screamingsandals.lib.sender.CommandSender;
 import org.screamingsandals.lib.utils.annotations.Service;
+import org.screamingsandals.lib.world.Location;
 
 @Service
 public class LobbyPos2Command extends BaseAdminSubCommand {
@@ -37,31 +40,40 @@ public class LobbyPos2Command extends BaseAdminSubCommand {
     public void construct(CommandManager<CommandSender> manager, Command.Builder<CommandSender> commandSenderWrapperBuilder) {
         manager.command(
                 commandSenderWrapperBuilder
-                        .handler(commandContext -> editMode(commandContext, (sender, game) -> {
-                            var loc = sender.as(Player.class).getLocation();
-                            var lobbyWorld = game.getLobbyWorld();
-
-                            if (lobbyWorld != null && (!game.getLobbyWorld().equals(loc.getWorld()))) {
-                                sender.sendMessage(Message.of(LangKeys.ADMIN_ARENA_EDIT_ERRORS_MUST_BE_IN_SAME_WORLD).defaultPrefix());
-                                return;
-                            }
-                            if (game.getLobbyPos1() != null) {
-                                if (Math.abs(game.getLobbyPos1().getBlockY() - loc.getBlockY()) <= 5) {
-                                    sender.sendMessage(Message.of(LangKeys.ADMIN_ARENA_EDIT_ERRORS_INVALID_BOUNDS).defaultPrefix());
-                                    return;
-                                }
-                            }
-                            game.setLobbyPos2(loc);
-                            sender.sendMessage(
-                                    Message
-                                            .of(LangKeys.ADMIN_ARENA_EDIT_SUCCESS_LOBBY_POS2_SET)
-                                            .defaultPrefix()
-                                            .placeholder("arena", game.getName())
-                                            .placeholder("x", loc.getBlockX())
-                                            .placeholder("y", loc.getBlockY())
-                                            .placeholder("z", loc.getBlockZ())
-                            );
-                        }))
+                        .handler(commandContext -> editMode(commandContext,
+                                (sender, game) -> setLobbyPos2(sender, game, sender.as(Player.class).getLocation())))
         );
+    }
+
+    /**
+     * Sets position 2 of the lobby region. Returns true when it was set.
+     */
+    public static boolean setLobbyPos2(@NotNull CommandSender sender, @NotNull GameImpl game, @NotNull Location loc) {
+        // the lobby region is read in the world of the lobby spawn; without a spawn it must match the other position
+        var lobbyWorld = game.getLobbyWorld();
+        if (lobbyWorld == null && game.getLobbyPos1() != null) {
+            lobbyWorld = game.getLobbyPos1().getWorld();
+        }
+        if (lobbyWorld != null && !lobbyWorld.equals(loc.getWorld())) {
+            sender.sendMessage(Message.of(LangKeys.ADMIN_ARENA_EDIT_ERRORS_MUST_BE_IN_SAME_WORLD).defaultPrefix());
+            return false;
+        }
+        if (game.getLobbyPos1() != null) {
+            if (Math.abs(game.getLobbyPos1().getBlockY() - loc.getBlockY()) <= 5) {
+                sender.sendMessage(Message.of(LangKeys.ADMIN_ARENA_EDIT_ERRORS_INVALID_BOUNDS).defaultPrefix());
+                return false;
+            }
+        }
+        game.setLobbyPos2(loc);
+        sender.sendMessage(
+                Message
+                        .of(LangKeys.ADMIN_ARENA_EDIT_SUCCESS_LOBBY_POS2_SET)
+                        .defaultPrefix()
+                        .placeholder("arena", game.getName())
+                        .placeholder("x", loc.getBlockX())
+                        .placeholder("y", loc.getBlockY())
+                        .placeholder("z", loc.getBlockZ())
+        );
+        return true;
     }
 }

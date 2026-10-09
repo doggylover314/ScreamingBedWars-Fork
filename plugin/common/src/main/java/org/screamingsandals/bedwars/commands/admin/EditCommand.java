@@ -21,7 +21,10 @@ package org.screamingsandals.bedwars.commands.admin;
 
 import cloud.commandframework.Command;
 import cloud.commandframework.CommandManager;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.screamingsandals.bedwars.commands.AdminCommand;
+import org.screamingsandals.bedwars.game.GameImpl;
 import org.screamingsandals.bedwars.game.GameManagerImpl;
 import org.screamingsandals.bedwars.lang.LangKeys;
 import org.screamingsandals.lib.lang.Message;
@@ -38,18 +41,26 @@ public class EditCommand extends BaseAdminSubCommand {
     public void construct(CommandManager<CommandSender> manager, Command.Builder<CommandSender> commandSenderWrapperBuilder) {
         manager.command(
                 commandSenderWrapperBuilder
-                        .handler(commandContext -> {
-                            String gameName = commandContext.get("game");
-                            var sender = commandContext.getSender();
-
-                            GameManagerImpl.getInstance().getLocalGame(gameName).ifPresentOrElse(game -> {
-                                game.stop();
-                                AdminCommand.gc.put(gameName, game);
-                                Message.of(LangKeys.ADMIN_ARENA_SUCCESS_EDIT_MODE)
-                                        .defaultPrefix()
-                                        .send(sender);
-                            }, () -> Message.of(LangKeys.IN_GAME_ERRORS_GAME_NOT_FOUND).defaultPrefix().send(sender));
-                        })
+                        .handler(commandContext -> enterEditMode(commandContext.getSender(), commandContext.get("game")))
         );
+    }
+
+    /**
+     * Stops the arena and puts it into edit mode (keyed by its real name). Null + message if not found.
+     */
+    public static @Nullable GameImpl enterEditMode(@NotNull CommandSender sender, @NotNull String gameName) {
+        var opt = GameManagerImpl.getInstance().getLocalGame(gameName);
+        if (opt.isEmpty()) {
+            Message.of(LangKeys.IN_GAME_ERRORS_GAME_NOT_FOUND).defaultPrefix().send(sender);
+            return null;
+        }
+
+        var game = opt.get();
+        game.stop();
+        AdminCommand.gc.put(game.getName(), game); // keyed by the real name: the typed string can be the arena's UUID
+        Message.of(LangKeys.ADMIN_ARENA_SUCCESS_EDIT_MODE)
+                .defaultPrefix()
+                .send(sender);
+        return game;
     }
 }

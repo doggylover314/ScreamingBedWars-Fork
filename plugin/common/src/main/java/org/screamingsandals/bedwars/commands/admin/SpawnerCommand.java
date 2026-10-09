@@ -23,6 +23,8 @@ import cloud.commandframework.Command;
 import cloud.commandframework.CommandManager;
 import cloud.commandframework.arguments.standard.*;
 import cloud.commandframework.context.CommandContext;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.screamingsandals.bedwars.api.game.ItemSpawner;
 import org.screamingsandals.bedwars.commands.AdminCommand;
 import org.screamingsandals.bedwars.game.GameImpl;
@@ -41,6 +43,7 @@ import org.screamingsandals.lib.spectator.event.ClickEvent;
 import org.screamingsandals.lib.tasker.TaskerTime;
 import org.screamingsandals.lib.utils.Pair;
 import org.screamingsandals.lib.utils.annotations.Service;
+import org.screamingsandals.lib.world.Location;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -62,40 +65,8 @@ public class SpawnerCommand extends BaseAdminSubCommand {
                                 .<CommandSender>newBuilder("type")
                                 .withSuggestionsProvider(editModeSuggestion((commandContext, sender, game) -> game.getGameVariant().getItemSpawnerTypeNames()))
                         )
-                        .handler(commandContext -> editMode(commandContext, (sender, game) -> {
-                            String type = commandContext.get("type");
-
-                            var loc = sender.as(Player.class).getLocation();
-
-                            if (game.getPos1() == null || game.getPos2() == null) {
-                                sender.sendMessage(Message.of(LangKeys.ADMIN_ARENA_EDIT_ERRORS_SET_BOUNDS_FIRST).defaultPrefix());
-                                return;
-                            }
-                            if (!game.getWorld().equals(loc.getWorld())) {
-                                sender.sendMessage(Message.of(LangKeys.ADMIN_ARENA_EDIT_ERRORS_MUST_BE_IN_SAME_WORLD).defaultPrefix());
-                                return;
-                            }
-                            if (!ArenaUtils.isInArea(loc, game.getPos1(), game.getPos2())) {
-                                sender.sendMessage(Message.of(LangKeys.ADMIN_ARENA_EDIT_ERRORS_MUST_BE_IN_BOUNDS).defaultPrefix());
-                                return;
-                            }
-                            loc = loc.withYaw(0).withPitch(0);
-                            var spawnerType = game.getGameVariant().getItemSpawnerType(type);
-                            if (spawnerType != null) {
-                                game.getSpawners().add(new ItemSpawnerImpl(loc, spawnerType.toHolder()));
-                                sender.sendMessage(
-                                        Message
-                                                .of(LangKeys.ADMIN_ARENA_EDIT_SUCCESS_SPAWNER_ADDED)
-                                                .defaultPrefix()
-                                                .placeholder("resource", spawnerType.getItemName())
-                                                .placeholder("x", loc.getBlockX())
-                                                .placeholder("y", loc.getBlockY())
-                                                .placeholder("z", loc.getBlockZ())
-                                );
-                            } else {
-                                sender.sendMessage(Message.of(LangKeys.ADMIN_ARENA_EDIT_ERRORS_INVALID_SPAWNER_TYPE).defaultPrefix());
-                            }
-                        }))
+                        .handler(commandContext -> editMode(commandContext, (sender, game) ->
+                                addSpawner(sender, game, commandContext.get("type"), sender.as(Player.class).getLocation(), null)))
         );
 
         manager.command(
@@ -467,5 +438,45 @@ public class SpawnerCommand extends BaseAdminSubCommand {
 
     public interface ItemSpawnerConsumer {
         void accept(CommandSender commandSender, GameImpl game, ItemSpawnerImpl itemSpawner);
+    }
+
+    /**
+     * Adds a spawner (optionally linked to a team). Returns the spawner, or null (after sending the error) on failure.
+     */
+    public static @Nullable ItemSpawnerImpl addSpawner(@NotNull CommandSender sender, @NotNull GameImpl game, @NotNull String type,
+                                                       @NotNull Location location, @Nullable TeamImpl team) {
+        if (game.getPos1() == null || game.getPos2() == null) {
+            sender.sendMessage(Message.of(LangKeys.ADMIN_ARENA_EDIT_ERRORS_SET_BOUNDS_FIRST).defaultPrefix());
+            return null;
+        }
+        if (!game.getWorld().equals(location.getWorld())) {
+            sender.sendMessage(Message.of(LangKeys.ADMIN_ARENA_EDIT_ERRORS_MUST_BE_IN_SAME_WORLD).defaultPrefix());
+            return null;
+        }
+        if (!ArenaUtils.isInArea(location, game.getPos1(), game.getPos2())) {
+            sender.sendMessage(Message.of(LangKeys.ADMIN_ARENA_EDIT_ERRORS_MUST_BE_IN_BOUNDS).defaultPrefix());
+            return null;
+        }
+        var loc = location.withYaw(0).withPitch(0);
+        var spawnerType = game.getGameVariant().getItemSpawnerType(type);
+        if (spawnerType == null) {
+            sender.sendMessage(Message.of(LangKeys.ADMIN_ARENA_EDIT_ERRORS_INVALID_SPAWNER_TYPE).defaultPrefix());
+            return null;
+        }
+        var spawner = new ItemSpawnerImpl(loc, spawnerType.toHolder());
+        if (team != null) {
+            spawner.setTeam(team); // team link (forge upgrades and mode games rely on it)
+        }
+        game.getSpawners().add(spawner);
+        sender.sendMessage(
+                Message
+                        .of(LangKeys.ADMIN_ARENA_EDIT_SUCCESS_SPAWNER_ADDED)
+                        .defaultPrefix()
+                        .placeholder("resource", spawnerType.getItemName())
+                        .placeholder("x", loc.getBlockX())
+                        .placeholder("y", loc.getBlockY())
+                        .placeholder("z", loc.getBlockZ())
+        );
+        return spawner;
     }
 }
